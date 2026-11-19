@@ -118,3 +118,7 @@ if "match_result" in st.session_state:
             st.success(f"Matched: {skill}")
     else:
         st.info("No matching skills found")
+
+    st.subheader("Improvement Suggestions")
+    for suggestion in result.get("suggestions", []):
+        st.info(suggestion)

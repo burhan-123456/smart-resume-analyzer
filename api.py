@@ -22,11 +22,7 @@ def parse_skills(skills):
 
 
 def extract_keywords(text):
-    words = re.findall(
-        r"[a-zA-Z][a-zA-Z0-9+#.]*",
-        text.lower()
-    )
-
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9+#.]*", text.lower())
     return sorted({
         word for word in words
         if word not in STOP_WORDS and len(word) > 1
@@ -38,20 +34,25 @@ def compare_skills(candidate_skills, required_skills):
     required = set(parse_skills(required_skills))
 
     return {
-        "matched": sorted(candidate.intersection(required)),
-        "missing": sorted(required.difference(candidate))
+        "matched": sorted(candidate & required),
+        "missing": sorted(required - candidate)
     }
 
 
 def calculate_match_score(candidate_skills, required_skills):
     required = set(parse_skills(required_skills))
-
     if not required:
         return 0.0
 
     matched = set(parse_skills(candidate_skills)) & required
-
     return round(len(matched) / len(required) * 100, 2)
+
+
+def generate_suggestions(missing_skills):
+    return [
+        f"Consider learning {skill} through projects and practice"
+        for skill in missing_skills
+    ]
 
 
 @app.route("/")
@@ -79,23 +80,20 @@ def submit_resume():
     required_fields = [
         "name", "email", "skills", "experience", "education"
     ]
-
     if any(field not in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
     name = data.get("name", "")
+    email = data.get("email", "")
+    skills = data.get("skills", "")
 
     if not isinstance(name, str) or len(name.strip()) < 2:
         return jsonify({"error": "Invalid candidate name"}), 400
-
-    email = data.get("email", "")
 
     if not isinstance(email, str) or not re.fullmatch(
         r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
     ):
         return jsonify({"error": "Invalid email address"}), 400
-
-    skills = data.get("skills", "")
 
     if not isinstance(skills, str) or not parse_skills(skills):
         return jsonify({"error": "At least one skill is required"}), 400
@@ -121,24 +119,19 @@ def list_resumes():
 @app.route("/extract-keywords", methods=["POST"])
 def keywords_api():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
     description = data.get("description", "")
-
     if not isinstance(description, str):
         return jsonify({"error": "Invalid description"}), 400
 
-    return jsonify({
-        "keywords": extract_keywords(description)
-    })
+    return jsonify({"keywords": extract_keywords(description)})
 
 
 @app.route("/compare-skills", methods=["POST"])
 def compare_skills_api():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
@@ -151,10 +144,10 @@ def compare_skills_api():
         return jsonify({"error": "Skills must be text"}), 400
 
     result = compare_skills(candidate_skills, required_skills)
-
     result["score"] = calculate_match_score(
         candidate_skills, required_skills
     )
+    result["suggestions"] = generate_suggestions(result["missing"])
 
     return jsonify(result)
 
