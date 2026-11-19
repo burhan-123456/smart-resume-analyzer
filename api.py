@@ -38,9 +38,7 @@ def submit_resume():
     name = data.get("name", "")
 
     if not isinstance(name, str) or len(name.strip()) < 2:
-        return jsonify({
-            "error": "Candidate name must contain at least 2 characters"
-        }), 400
+        return jsonify({"error": "Invalid candidate name"}), 400
 
     email = data.get("email", "")
 
@@ -48,6 +46,13 @@ def submit_resume():
         r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
     ):
         return jsonify({"error": "Invalid email address"}), 400
+
+    skills = data.get("skills", "")
+
+    if not isinstance(skills, str) or not skills.strip():
+        return jsonify({
+            "error": "At least one skill is required"
+        }), 400
 
     data["name"] = name.strip()
     data["email"] = email.strip().lower()
