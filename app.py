@@ -139,7 +139,6 @@ with st.form("overall_score_form"):
         "Education",
         ["Diploma", "BTech", "MTech", "PhD"]
     )
-
     calculate = st.form_submit_button("Calculate Overall Score")
 
 if calculate:
@@ -162,3 +161,30 @@ if "overall_score" in st.session_state:
     overall = st.session_state["overall_score"]
     st.progress(overall / 100)
     st.metric("Overall Score", f"{overall}%")
+
+st.divider()
+st.subheader("Candidate Ranking")
+
+ranking_skills = st.text_input(
+    "Required Skills for Ranking",
+    placeholder="python, flask, sql"
+)
+
+if st.button("Rank Candidates"):
+    try:
+        response = requests.post(
+            f"{API_URL}/rank-candidates",
+            json={"required_skills": ranking_skills},
+            timeout=5
+        )
+        response.raise_for_status()
+
+        candidates = response.json()
+
+        if candidates:
+            st.dataframe(candidates, use_container_width=True)
+        else:
+            st.info("No candidates available")
+
+    except requests.RequestException:
+        st.error("Unable to rank candidates")

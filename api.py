@@ -266,6 +266,11 @@ def rank_candidates():
             candidate["skills"], required_skills
         )
 
+    candidates.sort(
+        key=lambda candidate: candidate["match_score"],
+        reverse=True
+    )
+
     return jsonify(candidates)
 
 
