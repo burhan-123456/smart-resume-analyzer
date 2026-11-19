@@ -17,11 +17,7 @@ def home():
 def database_status():
     connection = get_connection()
     connection.close()
-
-    return jsonify({
-        "database": "SQLite",
-        "status": "connected"
-    })
+    return jsonify({"database": "SQLite", "status": "connected"})
 
 
 @app.route("/submit-resume", methods=["POST"])
@@ -38,6 +34,14 @@ def submit_resume():
     if any(field not in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
+    name = data.get("name", "")
+
+    if not isinstance(name, str) or len(name.strip()) < 2:
+        return jsonify({
+            "error": "Candidate name must contain at least 2 characters"
+        }), 400
+
+    data["name"] = name.strip()
     resume_id = save_resume(data)
 
     return jsonify({
