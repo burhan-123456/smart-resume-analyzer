@@ -302,3 +302,21 @@ if st.button("View Analysis History"):
             st.info("No analysis history available")
     except requests.RequestException:
         st.error("Unable to load analysis history")
+
+st.divider()
+st.subheader("Skill Frequency Analysis")
+
+if st.button("Show Skill Frequency"):
+    try:
+        response = requests.get(
+            f"{API_URL}/skill-frequency", timeout=5
+        )
+        response.raise_for_status()
+        frequency = response.json()
+
+        if frequency:
+            st.bar_chart(frequency)
+        else:
+            st.info("No skill data available")
+    except requests.RequestException:
+        st.error("Unable to load skill frequency")

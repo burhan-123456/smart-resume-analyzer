@@ -1,5 +1,6 @@
 
 import re
+from collections import Counter
 from flask import Flask, jsonify, request
 from database import (
     get_connection, init_db, save_resume,
@@ -323,7 +324,6 @@ def update_resume_api(resume_id):
 @app.route("/save-analysis", methods=["POST"])
 def save_analysis_api():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
@@ -362,6 +362,16 @@ def save_analysis_api():
 @app.route("/analysis-history", methods=["GET"])
 def analysis_history_api():
     return jsonify(get_analysis_history())
+
+
+@app.route("/skill-frequency", methods=["GET"])
+def skill_frequency_api():
+    counter = Counter()
+
+    for candidate in get_all_resumes():
+        counter.update(parse_skills(candidate["skills"]))
+
+    return jsonify(dict(counter.most_common()))
 
 
 if __name__ == "__main__":
