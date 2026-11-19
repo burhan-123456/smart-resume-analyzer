@@ -23,6 +23,18 @@ def init_db():
                 education TEXT
             )
         """)
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS analysis_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                candidate_id INTEGER NOT NULL,
+                required_skills TEXT NOT NULL,
+                match_score REAL NOT NULL,
+                analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (candidate_id) REFERENCES resumes(id)
+            )
+        """)
+
         connection.commit()
     finally:
         connection.close()
