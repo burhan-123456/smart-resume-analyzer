@@ -1,6 +1,7 @@
 
 import streamlit as st
 import requests
+import pandas as pd
 
 API_URL = "http://127.0.0.1:5000"
 
@@ -12,12 +13,24 @@ st.set_page_config(
 
 st.title("Smart Resume Analyzer")
 
-try:
-    response = requests.get(f"{API_URL}/", timeout=5)
-    response.raise_for_status()
+
+def api_request(method, endpoint, **kwargs):
+    try:
+        response = requests.request(
+            method,
+            f"{API_URL}{endpoint}",
+            timeout=5,
+            **kwargs
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as error:
+        st.error(f"API Error: {error}")
+        return None
+
+
+if api_request("GET", "/"):
     st.success("Connected to Flask Backend")
-except requests.RequestException:
-    st.error("Flask backend is not running")
 
 st.subheader("Candidate Details")
 
@@ -32,35 +45,33 @@ with st.form("resume_form"):
     submitted = st.form_submit_button("Submit Resume")
 
 if submitted:
-    payload = {
-        "name": name, "email": email, "skills": skills,
-        "experience": experience, "education": education
-    }
-    try:
-        response = requests.post(
-            f"{API_URL}/submit-resume", json=payload, timeout=5
-        )
-        response.raise_for_status()
-        result = response.json()
+    result = api_request(
+        "POST",
+        "/submit-resume",
+        json={
+            "name": name,
+            "email": email,
+            "skills": skills,
+            "experience": experience,
+            "education": education
+        }
+    )
+
+    if result:
         st.success(result["message"])
         st.info(f"Candidate ID: {result['resume_id']}")
-    except requests.RequestException:
-        st.error("Unable to submit resume")
 
 st.divider()
 st.subheader("Saved Candidates")
 
 if st.button("View Saved Resumes"):
-    try:
-        response = requests.get(f"{API_URL}/resumes", timeout=5)
-        response.raise_for_status()
-        resumes = response.json()
+    resumes = api_request("GET", "/resumes")
+
+    if resumes is not None:
         if resumes:
             st.dataframe(resumes, use_container_width=True)
         else:
             st.info("No resumes found")
-    except requests.RequestException:
-        st.error("Unable to load resumes")
 
 st.divider()
 st.subheader("Job Description Analysis")
@@ -69,8 +80,13 @@ job_description = st.text_area("Enter Job Description")
 
 if st.button("Analyze Job Description"):
     if job_description.strip():
-        st.session_state["job_description"] = job_description
-        st.success("Job description added")
+        result = api_request(
+            "POST",
+            "/extract-keywords",
+            json={"description": job_description}
+        )
+        if result is not None:
+            st.write("Extracted Keywords:", result["keywords"])
     else:
         st.warning("Please enter a job description")
 
@@ -81,22 +97,20 @@ candidate_skills = st.text_input("Candidate Skills for Matching")
 required_skills = st.text_input("Required Job Skills")
 
 if st.button("Calculate Match"):
-    try:
-        response = requests.post(
-            f"{API_URL}/compare-skills",
-            json={
-                "candidate_skills": candidate_skills,
-                "required_skills": required_skills
-            },
-            timeout=5
-        )
-        response.raise_for_status()
-        st.session_state["match_result"] = response.json()
-    except requests.RequestException:
-        st.error("Unable to calculate matching score")
+    result = api_request(
+        "POST",
+        "/compare-skills",
+        json={
+            "candidate_skills": candidate_skills,
+            "required_skills": required_skills
+        }
+    )
+    if result is not None:
+        st.session_state["match_result"] = result
 
 if "match_result" in st.session_state:
     result = st.session_state["match_result"]
+
     st.metric("Skill Match", f"{result['score']}%")
 
     st.subheader("Missing Skills")
@@ -123,7 +137,9 @@ st.subheader("Overall Resume Score")
 with st.form("overall_score_form"):
     score_skills = st.slider("Skill Match Score", 0, 100, 50)
     score_experience = st.number_input(
-        "Years of Experience", min_value=0, max_value=50,
+        "Years of Experience",
+        min_value=0,
+        max_value=50,
         key="score_experience"
     )
     score_education = st.selectbox(
@@ -132,20 +148,17 @@ with st.form("overall_score_form"):
     calculate = st.form_submit_button("Calculate Overall Score")
 
 if calculate:
-    try:
-        response = requests.post(
-            f"{API_URL}/overall-score",
-            json={
-                "skill_score": score_skills,
-                "experience": score_experience,
-                "education": score_education
-            },
-            timeout=5
-        )
-        response.raise_for_status()
-        st.session_state["overall_score"] = response.json()["overall_score"]
-    except requests.RequestException:
-        st.error("Unable to calculate overall score")
+    result = api_request(
+        "POST",
+        "/overall-score",
+        json={
+            "skill_score": score_skills,
+            "experience": score_experience,
+            "education": score_education
+        }
+    )
+    if result is not None:
+        st.session_state["overall_score"] = result["overall_score"]
 
 if "overall_score" in st.session_state:
     overall = st.session_state["overall_score"]
@@ -158,20 +171,17 @@ st.subheader("Candidate Ranking")
 ranking_skills = st.text_input("Required Skills for Ranking")
 
 if st.button("Rank Candidates"):
-    try:
-        response = requests.post(
-            f"{API_URL}/rank-candidates",
-            json={"required_skills": ranking_skills},
-            timeout=5
-        )
-        response.raise_for_status()
-        candidates = response.json()
+    candidates = api_request(
+        "POST",
+        "/rank-candidates",
+        json={"required_skills": ranking_skills}
+    )
+
+    if candidates is not None:
         if candidates:
             st.dataframe(candidates, use_container_width=True)
         else:
             st.info("No candidates available")
-    except requests.RequestException:
-        st.error("Unable to rank candidates")
 
 st.divider()
 st.subheader("Search Candidates")
@@ -179,19 +189,16 @@ st.subheader("Search Candidates")
 search_name = st.text_input("Candidate Name to Search")
 
 if st.button("Search Candidates"):
-    try:
-        response = requests.get(
-            f"{API_URL}/search-candidates",
-            params={"name": search_name}, timeout=5
-        )
-        response.raise_for_status()
-        results = response.json()
+    results = api_request(
+        "GET",
+        "/search-candidates",
+        params={"name": search_name}
+    )
+    if results is not None:
         if results:
             st.dataframe(results, use_container_width=True)
         else:
             st.info("No matching candidates found")
-    except requests.RequestException:
-        st.error("Candidate search failed")
 
 st.divider()
 st.subheader("Filter Candidates by Skill")
@@ -199,19 +206,16 @@ st.subheader("Filter Candidates by Skill")
 filter_skill = st.text_input("Skill to Filter")
 
 if st.button("Filter Candidates"):
-    try:
-        response = requests.get(
-            f"{API_URL}/filter-skills",
-            params={"skill": filter_skill}, timeout=5
-        )
-        response.raise_for_status()
-        results = response.json()
+    results = api_request(
+        "GET",
+        "/filter-skills",
+        params={"skill": filter_skill}
+    )
+    if results is not None:
         if results:
             st.dataframe(results, use_container_width=True)
         else:
             st.info("No candidates found with this skill")
-    except requests.RequestException:
-        st.error("Unable to filter candidates")
 
 st.divider()
 st.subheader("Delete Candidate")
@@ -221,14 +225,11 @@ delete_id = st.number_input(
 )
 
 if st.button("Delete Candidate"):
-    try:
-        response = requests.delete(
-            f"{API_URL}/resumes/{delete_id}", timeout=5
-        )
-        response.raise_for_status()
-        st.success(response.json()["message"])
-    except requests.RequestException:
-        st.error("Unable to delete candidate")
+    result = api_request(
+        "DELETE", f"/resumes/{delete_id}"
+    )
+    if result is not None:
+        st.success(result["message"])
 
 st.divider()
 st.subheader("Update Candidate")
@@ -247,21 +248,19 @@ with st.form("update_candidate"):
     update_submitted = st.form_submit_button("Update Candidate")
 
 if update_submitted:
-    payload = {
-        "name": update_name, "email": update_email,
-        "skills": update_skills,
-        "experience": update_experience,
-        "education": update_education
-    }
-    try:
-        response = requests.put(
-            f"{API_URL}/resumes/{update_id}",
-            json=payload, timeout=5
-        )
-        response.raise_for_status()
-        st.success(response.json()["message"])
-    except requests.RequestException:
-        st.error("Unable to update candidate")
+    result = api_request(
+        "PUT",
+        f"/resumes/{update_id}",
+        json={
+            "name": update_name,
+            "email": update_email,
+            "skills": update_skills,
+            "experience": update_experience,
+            "education": update_education
+        }
+    )
+    if result is not None:
+        st.success(result["message"])
 
 st.divider()
 st.subheader("Analysis History")
@@ -274,49 +273,49 @@ with st.form("analysis_form"):
     save_history = st.form_submit_button("Save Analysis")
 
 if save_history:
-    try:
-        response = requests.post(
-            f"{API_URL}/save-analysis",
-            json={
-                "candidate_id": history_id,
-                "required_skills": history_skills
-            },
-            timeout=5
-        )
-        response.raise_for_status()
-        st.success("Analysis saved successfully")
-        st.metric("Saved Match Score", f"{response.json()['match_score']}%")
-    except requests.RequestException:
-        st.error("Unable to save analysis")
+    result = api_request(
+        "POST",
+        "/save-analysis",
+        json={
+            "candidate_id": history_id,
+            "required_skills": history_skills
+        }
+    )
+    if result is not None:
+        st.success(result["message"])
+        st.metric("Saved Match Score", f"{result['match_score']}%")
 
 if st.button("View Analysis History"):
-    try:
-        response = requests.get(
-            f"{API_URL}/analysis-history", timeout=5
-        )
-        response.raise_for_status()
-        history = response.json()
+    history = api_request("GET", "/analysis-history")
+
+    if history is not None:
         if history:
             st.dataframe(history, use_container_width=True)
         else:
             st.info("No analysis history available")
-    except requests.RequestException:
-        st.error("Unable to load analysis history")
 
 st.divider()
 st.subheader("Skill Frequency Analysis")
 
 if st.button("Show Skill Frequency"):
-    try:
-        response = requests.get(
-            f"{API_URL}/skill-frequency", timeout=5
-        )
-        response.raise_for_status()
-        frequency = response.json()
+    frequency = api_request("GET", "/skill-frequency")
 
+    if frequency is not None:
         if frequency:
-            st.bar_chart(frequency)
+            df = pd.DataFrame(
+                list(frequency.items()),
+                columns=["Skill", "Count"]
+            )
+            df = df.sort_values(
+                by="Count", ascending=False
+            )
+
+            st.subheader("Most Common Skills")
+            st.dataframe(df, use_container_width=True)
+
+            st.subheader("Skill Frequency Chart")
+            st.bar_chart(
+                df.set_index("Skill")["Count"]
+            )
         else:
             st.info("No skill data available")
-    except requests.RequestException:
-        st.error("Unable to load skill frequency")
