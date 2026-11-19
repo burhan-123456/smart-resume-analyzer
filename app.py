@@ -17,10 +17,8 @@ st.title("Smart Resume Analyzer")
 def api_request(method, endpoint, **kwargs):
     try:
         response = requests.request(
-            method,
-            f"{API_URL}{endpoint}",
-            timeout=5,
-            **kwargs
+            method, f"{API_URL}{endpoint}",
+            timeout=5, **kwargs
         )
         response.raise_for_status()
         return response.json()
@@ -36,26 +34,15 @@ st.subheader("Dashboard Statistics")
 
 if st.button("Load Dashboard Statistics"):
     stats = api_request("GET", "/statistics")
-
     if stats is not None:
         col1, col2, col3, col4 = st.columns(4)
-
-        col1.metric(
-            "Total Candidates",
-            stats["total_candidates"]
-        )
-        col2.metric(
-            "Total Analyses",
-            stats["total_analyses"]
-        )
+        col1.metric("Total Candidates", stats["total_candidates"])
+        col2.metric("Total Analyses", stats["total_analyses"])
         col3.metric(
             "Average Experience",
             f"{stats['average_experience']} years"
         )
-        col4.metric(
-            "Unique Skills",
-            stats["unique_skills"]
-        )
+        col4.metric("Unique Skills", stats["unique_skills"])
 
 st.divider()
 st.subheader("Candidate Details")
@@ -72,13 +59,10 @@ with st.form("resume_form"):
 
 if submitted:
     result = api_request(
-        "POST",
-        "/submit-resume",
+        "POST", "/submit-resume",
         json={
-            "name": name,
-            "email": email,
-            "skills": skills,
-            "experience": experience,
+            "name": name, "email": email,
+            "skills": skills, "experience": experience,
             "education": education
         }
     )
@@ -105,8 +89,7 @@ job_description = st.text_area("Enter Job Description")
 if st.button("Analyze Job Description"):
     if job_description.strip():
         result = api_request(
-            "POST",
-            "/extract-keywords",
+            "POST", "/extract-keywords",
             json={"description": job_description}
         )
         if result is not None:
@@ -122,8 +105,7 @@ required_skills = st.text_input("Required Job Skills")
 
 if st.button("Calculate Match"):
     result = api_request(
-        "POST",
-        "/compare-skills",
+        "POST", "/compare-skills",
         json={
             "candidate_skills": candidate_skills,
             "required_skills": required_skills
@@ -160,10 +142,8 @@ st.subheader("Overall Resume Score")
 with st.form("overall_score_form"):
     score_skills = st.slider("Skill Match Score", 0, 100, 50)
     score_experience = st.number_input(
-        "Years of Experience",
-        min_value=0,
-        max_value=50,
-        key="score_experience"
+        "Years of Experience", min_value=0,
+        max_value=50, key="score_experience"
     )
     score_education = st.selectbox(
         "Education", ["Diploma", "BTech", "MTech", "PhD"]
@@ -172,8 +152,7 @@ with st.form("overall_score_form"):
 
 if calculate:
     result = api_request(
-        "POST",
-        "/overall-score",
+        "POST", "/overall-score",
         json={
             "skill_score": score_skills,
             "experience": score_experience,
@@ -195,8 +174,7 @@ ranking_skills = st.text_input("Required Skills for Ranking")
 
 if st.button("Rank Candidates"):
     candidates = api_request(
-        "POST",
-        "/rank-candidates",
+        "POST", "/rank-candidates",
         json={"required_skills": ranking_skills}
     )
     if candidates is not None:
@@ -212,8 +190,7 @@ search_name = st.text_input("Candidate Name to Search")
 
 if st.button("Search Candidates"):
     results = api_request(
-        "GET",
-        "/search-candidates",
+        "GET", "/search-candidates",
         params={"name": search_name}
     )
     if results is not None:
@@ -229,8 +206,7 @@ filter_skill = st.text_input("Skill to Filter")
 
 if st.button("Filter Candidates"):
     results = api_request(
-        "GET",
-        "/filter-skills",
+        "GET", "/filter-skills",
         params={"skill": filter_skill}
     )
     if results is not None:
@@ -271,11 +247,9 @@ with st.form("update_candidate"):
 
 if update_submitted:
     result = api_request(
-        "PUT",
-        f"/resumes/{update_id}",
+        "PUT", f"/resumes/{update_id}",
         json={
-            "name": update_name,
-            "email": update_email,
+            "name": update_name, "email": update_email,
             "skills": update_skills,
             "experience": update_experience,
             "education": update_education
@@ -296,8 +270,7 @@ with st.form("analysis_form"):
 
 if save_history:
     result = api_request(
-        "POST",
-        "/save-analysis",
+        "POST", "/save-analysis",
         json={
             "candidate_id": history_id,
             "required_skills": history_skills
@@ -320,17 +293,65 @@ st.subheader("Skill Frequency Analysis")
 
 if st.button("Show Skill Frequency"):
     frequency = api_request("GET", "/skill-frequency")
-
     if frequency is not None:
         if frequency:
             df = pd.DataFrame(
                 list(frequency.items()),
                 columns=["Skill", "Count"]
-            )
-            df = df.sort_values(
-                by="Count", ascending=False
-            )
+            ).sort_values("Count", ascending=False)
+
             st.dataframe(df, use_container_width=True)
             st.bar_chart(df.set_index("Skill")["Count"])
         else:
             st.info("No skill data available")
+
+st.divider()
+st.subheader("Compare Two Candidates")
+
+with st.form("compare_candidates_form"):
+    candidate_id_1 = st.number_input(
+        "First Candidate ID",
+        min_value=1, step=1
+    )
+    candidate_id_2 = st.number_input(
+        "Second Candidate ID",
+        min_value=1, step=1
+    )
+    compare_required = st.text_input(
+        "Required Skills for Comparison"
+    )
+    compare_submit = st.form_submit_button("Compare Candidates")
+
+if compare_submit:
+    result = api_request(
+        "POST", "/compare-candidates",
+        json={
+            "candidate_id_1": candidate_id_1,
+            "candidate_id_2": candidate_id_2,
+            "required_skills": compare_required
+        }
+    )
+
+    if result is not None:
+        c1 = result["candidate_1"]
+        c2 = result["candidate_2"]
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(c1["name"])
+            st.write("Skills:", c1["skills"])
+            st.write("Experience:", c1["experience"])
+            st.write("Education:", c1["education"])
+            st.metric("Match Score", f"{c1['match_score']}%")
+
+        with col2:
+            st.subheader(c2["name"])
+            st.write("Skills:", c2["skills"])
+            st.write("Experience:", c2["experience"])
+            st.write("Education:", c2["education"])
+            st.metric("Match Score", f"{c2['match_score']}%")
+
+        st.success(
+            f"Higher Skill Match: {result['higher_match']}"
+        )
