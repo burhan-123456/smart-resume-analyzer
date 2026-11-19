@@ -15,8 +15,7 @@ STOP_WORDS = {
 def parse_skills(skills):
     return list(dict.fromkeys(
         skill.strip().lower()
-        for skill in skills.split(",")
-        if skill.strip()
+        for skill in skills.split(",") if skill.strip()
     ))
 
 
@@ -66,6 +65,20 @@ def calculate_experience_score(years):
 
 def normalize_education(education):
     return " ".join(education.strip().lower().split())
+
+
+def calculate_education_score(education):
+    education = normalize_education(education)
+
+    if "phd" in education or "doctorate" in education:
+        return 100
+    if any(word in education for word in ["mtech", "m.tech", "master", "mba"]):
+        return 90
+    if any(word in education for word in ["btech", "b.tech", "bachelor", "bsc"]):
+        return 75
+    if "diploma" in education:
+        return 60
+    return 40
 
 
 @app.route("/")
@@ -183,6 +196,21 @@ def experience_score_api():
 
     return jsonify({
         "experience_score": calculate_experience_score(years)
+    })
+
+
+@app.route("/education-score", methods=["POST"])
+def education_score_api():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    education = data.get("education", "")
+    if not isinstance(education, str):
+        return jsonify({"error": "Invalid education"}), 400
+
+    return jsonify({
+        "education_score": calculate_education_score(education)
     })
 
 
