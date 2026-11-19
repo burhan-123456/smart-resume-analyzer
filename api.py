@@ -1,4 +1,5 @@
 
+import re
 from flask import Flask, jsonify, request
 from database import get_connection, init_db, save_resume, get_all_resumes
 
@@ -41,7 +42,16 @@ def submit_resume():
             "error": "Candidate name must contain at least 2 characters"
         }), 400
 
+    email = data.get("email", "")
+
+    if not isinstance(email, str) or not re.fullmatch(
+        r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
+    ):
+        return jsonify({"error": "Invalid email address"}), 400
+
     data["name"] = name.strip()
+    data["email"] = email.strip().lower()
+
     resume_id = save_resume(data)
 
     return jsonify({
