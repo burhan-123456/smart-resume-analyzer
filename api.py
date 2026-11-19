@@ -315,11 +315,35 @@ def compare_candidates_api():
     if candidate1 is None or candidate2 is None:
         return jsonify({"error": "Candidate not found"}), 404
 
-    result = compare_candidates(
-        candidate1, candidate2, required
+    return jsonify(
+        compare_candidates(candidate1, candidate2, required)
     )
 
-    return jsonify(result)
+
+@app.route("/top-candidates", methods=["POST"])
+def top_candidates_api():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    required = data.get("required_skills", "")
+
+    if not isinstance(required, str) or not parse_skills(required):
+        return jsonify({"error": "Required skills are missing"}), 400
+
+    candidates = get_all_resumes()
+
+    for candidate in candidates:
+        candidate["match_score"] = calculate_match_score(
+            candidate["skills"], required
+        )
+
+    candidates.sort(
+        key=lambda c: (-c["match_score"], c["id"])
+    )
+
+    return jsonify(candidates[:5])
 
 
 if __name__ == "__main__":

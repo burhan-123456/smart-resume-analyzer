@@ -310,12 +310,10 @@ st.subheader("Compare Two Candidates")
 
 with st.form("compare_candidates_form"):
     candidate_id_1 = st.number_input(
-        "First Candidate ID",
-        min_value=1, step=1
+        "First Candidate ID", min_value=1, step=1
     )
     candidate_id_2 = st.number_input(
-        "Second Candidate ID",
-        min_value=1, step=1
+        "Second Candidate ID", min_value=1, step=1
     )
     compare_required = st.text_input(
         "Required Skills for Comparison"
@@ -355,3 +353,25 @@ if compare_submit:
         st.success(
             f"Higher Skill Match: {result['higher_match']}"
         )
+
+st.divider()
+st.subheader("Top 5 Candidates")
+
+top_required = st.text_input(
+    "Required Skills for Top Candidates"
+)
+
+if st.button("Show Top 5 Candidates"):
+    candidates = api_request(
+        "POST", "/top-candidates",
+        json={"required_skills": top_required}
+    )
+
+    if candidates is not None:
+        if candidates:
+            st.dataframe(
+                candidates,
+                use_container_width=True
+            )
+        else:
+            st.info("No candidates found")
