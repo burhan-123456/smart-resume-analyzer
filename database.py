@@ -34,7 +34,6 @@ def init_db():
                 FOREIGN KEY (candidate_id) REFERENCES resumes(id)
             )
         """)
-
         connection.commit()
     finally:
         connection.close()
@@ -94,5 +93,19 @@ def update_resume(resume_id, data):
         ))
         connection.commit()
         return cursor.rowcount > 0
+    finally:
+        connection.close()
+
+
+def save_analysis(candidate_id, required_skills, match_score):
+    connection = get_connection()
+    try:
+        cursor = connection.execute("""
+            INSERT INTO analysis_history
+            (candidate_id, required_skills, match_score)
+            VALUES (?, ?, ?)
+        """, (candidate_id, required_skills, match_score))
+        connection.commit()
+        return cursor.lastrowid
     finally:
         connection.close()

@@ -3,7 +3,8 @@ import re
 from flask import Flask, jsonify, request
 from database import (
     get_connection, init_db, save_resume,
-    get_all_resumes, delete_resume, update_resume
+    get_all_resumes, delete_resume, update_resume,
+    save_analysis
 )
 
 app = Flask(__name__)
@@ -175,11 +176,9 @@ def keywords_api():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
-
     description = data.get("description", "")
     if not isinstance(description, str):
         return jsonify({"error": "Invalid description"}), 400
-
     return jsonify({"keywords": extract_keywords(description)})
 
 
@@ -191,7 +190,6 @@ def compare_skills_api():
 
     candidate = data.get("candidate_skills", "")
     required = data.get("required_skills", "")
-
     if not isinstance(candidate, str) or not isinstance(required, str):
         return jsonify({"error": "Skills must be text"}), 400
 
@@ -297,7 +295,6 @@ def filter_skills():
     skill = request.args.get("skill", "").strip().lower()
     if not skill:
         return jsonify([])
-
     return jsonify([
         candidate for candidate in get_all_resumes()
         if skill in parse_skills(candidate["skills"])
@@ -321,6 +318,49 @@ def update_resume_api(resume_id):
         return jsonify({"error": "Candidate not found"}), 404
 
     return jsonify({"message": "Candidate updated successfully"})
+
+
+@app.route("/save-analysis", methods=["POST"])
+def save_analysis_api():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    candidate_id = data.get("candidate_id")
+    required_skills = data.get("required_skills")
+
+    if (
+        isinstance(candidate_id, bool)
+        or not isinstance(candidate_id, int)
+        or candidate_id < 1
+        or not isinstance(required_skills, str)
+        or not parse_skills(required_skills)
+    ):
+        return jsonify({"error": "Invalid analysis inputs"}), 400
+
+    candidate = next(
+        (
+            item for item in get_all_resumes()
+            if item["id"] == candidate_id
+        ),
+        None
+    )
+
+    if candidate is None:
+        return jsonify({"error": "Candidate not found"}), 404
+
+    score = calculate_match_score(
+        candidate["skills"], required_skills
+    )
+
+    analysis_id = save_analysis(candidate_id, required_skills, score)
+
+    return jsonify({
+        "analysis_id": analysis_id,
+        "match_score": score,
+        "message": "Analysis saved successfully"
+    }), 201
 
 
 if __name__ == "__main__":
