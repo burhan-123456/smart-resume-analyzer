@@ -13,12 +13,11 @@ STOP_WORDS = {
 
 
 def parse_skills(skills):
-    cleaned = [
+    return list(dict.fromkeys(
         skill.strip().lower()
         for skill in skills.split(",")
         if skill.strip()
-    ]
-    return list(dict.fromkeys(cleaned))
+    ))
 
 
 def extract_keywords(text):
@@ -51,6 +50,18 @@ def generate_suggestions(missing_skills):
         f"Consider learning {skill} through projects and practice"
         for skill in missing_skills
     ]
+
+
+def calculate_experience_score(years):
+    if years >= 5:
+        return 100
+    if years >= 3:
+        return 80
+    if years >= 1:
+        return 60
+    if years > 0:
+        return 40
+    return 20
 
 
 @app.route("/")
@@ -100,9 +111,7 @@ def submit_resume():
         or not isinstance(experience, (int, float))
         or not 0 <= experience <= 50
     ):
-        return jsonify({
-            "error": "Experience must be between 0 and 50 years"
-        }), 400
+        return jsonify({"error": "Invalid experience"}), 400
 
     if not isinstance(data["education"], str):
         return jsonify({"error": "Invalid education"}), 400
@@ -155,6 +164,26 @@ def compare_skills_api():
     result["suggestions"] = generate_suggestions(result["missing"])
 
     return jsonify(result)
+
+
+@app.route("/experience-score", methods=["POST"])
+def experience_score_api():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    years = data.get("experience", 0)
+
+    if (
+        isinstance(years, bool)
+        or not isinstance(years, (int, float))
+        or not 0 <= years <= 50
+    ):
+        return jsonify({"error": "Invalid experience"}), 400
+
+    return jsonify({
+        "experience_score": calculate_experience_score(years)
+    })
 
 
 if __name__ == "__main__":
