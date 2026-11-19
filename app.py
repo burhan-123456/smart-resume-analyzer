@@ -103,6 +103,7 @@ if st.button("Calculate Match"):
 
 if "match_result" in st.session_state:
     result = st.session_state["match_result"]
+
     st.metric("Skill Match", f"{result['score']}%")
 
     st.subheader("Missing Skills")
@@ -122,3 +123,42 @@ if "match_result" in st.session_state:
     st.subheader("Improvement Suggestions")
     for suggestion in result.get("suggestions", []):
         st.info(suggestion)
+
+st.divider()
+st.subheader("Overall Resume Score")
+
+with st.form("overall_score_form"):
+    score_skills = st.slider("Skill Match Score", 0, 100, 50)
+    score_experience = st.number_input(
+        "Years of Experience",
+        min_value=0,
+        max_value=50,
+        key="score_experience"
+    )
+    score_education = st.selectbox(
+        "Education",
+        ["Diploma", "BTech", "MTech", "PhD"]
+    )
+
+    calculate = st.form_submit_button("Calculate Overall Score")
+
+if calculate:
+    try:
+        response = requests.post(
+            f"{API_URL}/overall-score",
+            json={
+                "skill_score": score_skills,
+                "experience": score_experience,
+                "education": score_education
+            },
+            timeout=5
+        )
+        response.raise_for_status()
+        st.session_state["overall_score"] = response.json()["overall_score"]
+    except requests.RequestException:
+        st.error("Unable to calculate overall score")
+
+if "overall_score" in st.session_state:
+    overall = st.session_state["overall_score"]
+    st.progress(overall / 100)
+    st.metric("Overall Score", f"{overall}%")
