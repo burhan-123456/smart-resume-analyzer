@@ -64,6 +64,10 @@ def calculate_experience_score(years):
     return 20
 
 
+def normalize_education(education):
+    return " ".join(education.strip().lower().split())
+
+
 @app.route("/")
 def home():
     return jsonify({
@@ -82,7 +86,6 @@ def database_status():
 @app.route("/submit-resume", methods=["POST"])
 def submit_resume():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
@@ -94,6 +97,7 @@ def submit_resume():
     email = data["email"]
     skills = data["skills"]
     experience = data["experience"]
+    education = data["education"]
 
     if not isinstance(name, str) or len(name.strip()) < 2:
         return jsonify({"error": "Invalid candidate name"}), 400
@@ -113,15 +117,15 @@ def submit_resume():
     ):
         return jsonify({"error": "Invalid experience"}), 400
 
-    if not isinstance(data["education"], str):
+    if not isinstance(education, str):
         return jsonify({"error": "Invalid education"}), 400
 
     data["name"] = name.strip()
     data["email"] = email.strip().lower()
     data["skills"] = ", ".join(parse_skills(skills))
+    data["education"] = normalize_education(education)
 
     resume_id = save_resume(data)
-
     return jsonify({
         "message": "Resume saved successfully",
         "resume_id": resume_id,
@@ -143,7 +147,6 @@ def keywords_api():
     description = data.get("description", "")
     if not isinstance(description, str):
         return jsonify({"error": "Invalid description"}), 400
-
     return jsonify({"keywords": extract_keywords(description)})
 
 
@@ -155,14 +158,12 @@ def compare_skills_api():
 
     candidate = data.get("candidate_skills", "")
     required = data.get("required_skills", "")
-
     if not isinstance(candidate, str) or not isinstance(required, str):
         return jsonify({"error": "Skills must be text"}), 400
 
     result = compare_skills(candidate, required)
     result["score"] = calculate_match_score(candidate, required)
     result["suggestions"] = generate_suggestions(result["missing"])
-
     return jsonify(result)
 
 
@@ -173,7 +174,6 @@ def experience_score_api():
         return jsonify({"error": "Invalid JSON data"}), 400
 
     years = data.get("experience", 0)
-
     if (
         isinstance(years, bool)
         or not isinstance(years, (int, float))
