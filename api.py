@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from database import get_connection
-
+from database import get_connection, init_db
 app = Flask(__name__)
 
 
@@ -21,4 +21,5 @@ def database_status():
         "status": "connected"
     })
 if __name__ == "__main__":
+    init_db()
     app.run(port=5000, debug=True)
