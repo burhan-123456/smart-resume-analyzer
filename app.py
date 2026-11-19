@@ -47,11 +47,9 @@ if submitted:
             timeout=5
         )
         response.raise_for_status()
-
         result = response.json()
         st.success(result["message"])
         st.info(f"Candidate ID: {result['resume_id']}")
-
     except requests.RequestException:
         st.error("Unable to submit resume")
 
@@ -62,14 +60,11 @@ if st.button("View Saved Resumes"):
     try:
         response = requests.get(f"{API_URL}/resumes", timeout=5)
         response.raise_for_status()
-
         resumes = response.json()
-
         if resumes:
             st.dataframe(resumes, use_container_width=True)
         else:
-            st.info("No resumes found in database")
-
+            st.info("No resumes found")
     except requests.RequestException:
         st.error("Unable to load resumes")
 
@@ -87,3 +82,35 @@ if st.button("Analyze Job Description"):
         st.success("Job description added")
     else:
         st.warning("Please enter a job description")
+
+st.divider()
+st.subheader("Resume Match Score")
+
+candidate_skills = st.text_input(
+    "Candidate Skills for Matching",
+    placeholder="python, flask, sql"
+)
+
+required_skills = st.text_input(
+    "Required Job Skills",
+    placeholder="python, flask, machine learning"
+)
+
+if st.button("Calculate Match"):
+    try:
+        response = requests.post(
+            f"{API_URL}/compare-skills",
+            json={
+                "candidate_skills": candidate_skills,
+                "required_skills": required_skills
+            },
+            timeout=5
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        st.session_state["match_result"] = result
+        st.metric("Skill Match", f"{result['score']}%")
+
+    except requests.RequestException:
+        st.error("Unable to calculate matching score")
