@@ -1,5 +1,8 @@
 
-from flask import Flask, jsonify, request
+import csv
+import io
+
+from flask import Flask, jsonify, request, Response
 
 from services import (
     get_connection, init_db, save_resume,
@@ -344,6 +347,38 @@ def top_candidates_api():
     )
 
     return jsonify(candidates[:5])
+
+
+@app.route("/export-candidates", methods=["GET"])
+def export_candidates_api():
+    candidates = get_all_resumes()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "ID", "Name", "Email",
+        "Skills", "Experience", "Education"
+    ])
+
+    for candidate in candidates:
+        writer.writerow([
+            candidate["id"],
+            candidate["name"],
+            candidate["email"],
+            candidate["skills"],
+            candidate["experience"],
+            candidate["education"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=candidates.csv"
+        }
+    )
 
 
 if __name__ == "__main__":

@@ -375,3 +375,22 @@ if st.button("Show Top 5 Candidates"):
             )
         else:
             st.info("No candidates found")
+
+st.divider()
+st.subheader("Export Candidates to CSV")
+
+try:
+    export_response = requests.get(
+        f"{API_URL}/export-candidates",
+        timeout=5
+    )
+    export_response.raise_for_status()
+
+    st.download_button(
+        label="Download Candidates CSV",
+        data=export_response.content,
+        file_name="candidates.csv",
+        mime="text/csv"
+    )
+except requests.RequestException:
+    st.error("Unable to prepare CSV export")
