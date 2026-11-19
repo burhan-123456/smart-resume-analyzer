@@ -32,7 +32,6 @@ def extract_keywords(text):
 def compare_skills(candidate_skills, required_skills):
     candidate = set(parse_skills(candidate_skills))
     required = set(parse_skills(required_skills))
-
     return {
         "matched": sorted(candidate & required),
         "missing": sorted(required - candidate)
@@ -43,7 +42,6 @@ def calculate_match_score(candidate_skills, required_skills):
     required = set(parse_skills(required_skills))
     if not required:
         return 0.0
-
     matched = set(parse_skills(candidate_skills)) & required
     return round(len(matched) / len(required) * 100, 2)
 
@@ -77,15 +75,14 @@ def submit_resume():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
-    required_fields = [
-        "name", "email", "skills", "experience", "education"
-    ]
-    if any(field not in data for field in required_fields):
+    fields = ["name", "email", "skills", "experience", "education"]
+    if any(field not in data for field in fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    name = data.get("name", "")
-    email = data.get("email", "")
-    skills = data.get("skills", "")
+    name = data["name"]
+    email = data["email"]
+    skills = data["skills"]
+    experience = data["experience"]
 
     if not isinstance(name, str) or len(name.strip()) < 2:
         return jsonify({"error": "Invalid candidate name"}), 400
@@ -97,6 +94,18 @@ def submit_resume():
 
     if not isinstance(skills, str) or not parse_skills(skills):
         return jsonify({"error": "At least one skill is required"}), 400
+
+    if (
+        isinstance(experience, bool)
+        or not isinstance(experience, (int, float))
+        or not 0 <= experience <= 50
+    ):
+        return jsonify({
+            "error": "Experience must be between 0 and 50 years"
+        }), 400
+
+    if not isinstance(data["education"], str):
+        return jsonify({"error": "Invalid education"}), 400
 
     data["name"] = name.strip()
     data["email"] = email.strip().lower()
@@ -135,18 +144,14 @@ def compare_skills_api():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
-    candidate_skills = data.get("candidate_skills", "")
-    required_skills = data.get("required_skills", "")
+    candidate = data.get("candidate_skills", "")
+    required = data.get("required_skills", "")
 
-    if not all(isinstance(value, str) for value in (
-        candidate_skills, required_skills
-    )):
+    if not isinstance(candidate, str) or not isinstance(required, str):
         return jsonify({"error": "Skills must be text"}), 400
 
-    result = compare_skills(candidate_skills, required_skills)
-    result["score"] = calculate_match_score(
-        candidate_skills, required_skills
-    )
+    result = compare_skills(candidate, required)
+    result["score"] = calculate_match_score(candidate, required)
     result["suggestions"] = generate_suggestions(result["missing"])
 
     return jsonify(result)
