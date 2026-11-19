@@ -33,6 +33,16 @@ def extract_keywords(text):
     })
 
 
+def compare_skills(candidate_skills, required_skills):
+    candidate = set(parse_skills(candidate_skills))
+    required = set(parse_skills(required_skills))
+
+    return {
+        "matched": sorted(candidate.intersection(required)),
+        "missing": sorted(required.difference(candidate))
+    }
+
+
 @app.route("/")
 def home():
     return jsonify({
@@ -112,6 +122,26 @@ def keywords_api():
     return jsonify({
         "keywords": extract_keywords(description)
     })
+
+
+@app.route("/compare-skills", methods=["POST"])
+def compare_skills_api():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    candidate_skills = data.get("candidate_skills", "")
+    required_skills = data.get("required_skills", "")
+
+    if not all(isinstance(value, str) for value in (
+        candidate_skills, required_skills
+    )):
+        return jsonify({"error": "Skills must be text"}), 400
+
+    return jsonify(compare_skills(
+        candidate_skills, required_skills
+    ))
 
 
 if __name__ == "__main__":
