@@ -5,6 +5,12 @@ from database import get_connection, init_db, save_resume, get_all_resumes
 
 app = Flask(__name__)
 
+STOP_WORDS = {
+    "a", "an", "the", "and", "or", "for", "with",
+    "in", "on", "to", "of", "is", "are", "we",
+    "looking", "required", "experience", "developer"
+}
+
 
 def parse_skills(skills):
     cleaned = [
@@ -13,6 +19,18 @@ def parse_skills(skills):
         if skill.strip()
     ]
     return list(dict.fromkeys(cleaned))
+
+
+def extract_keywords(text):
+    words = re.findall(
+        r"[a-zA-Z][a-zA-Z0-9+#.]*",
+        text.lower()
+    )
+
+    return sorted({
+        word for word in words
+        if word not in STOP_WORDS and len(word) > 1
+    })
 
 
 @app.route("/")
@@ -77,6 +95,23 @@ def submit_resume():
 @app.route("/resumes", methods=["GET"])
 def list_resumes():
     return jsonify(get_all_resumes())
+
+
+@app.route("/extract-keywords", methods=["POST"])
+def keywords_api():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    description = data.get("description", "")
+
+    if not isinstance(description, str):
+        return jsonify({"error": "Invalid description"}), 400
+
+    return jsonify({
+        "keywords": extract_keywords(description)
+    })
 
 
 if __name__ == "__main__":
