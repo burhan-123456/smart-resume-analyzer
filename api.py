@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 def parse_skills(skills):
     return [
-        skill.strip()
+        skill.strip().lower()
         for skill in skills.split(",")
         if skill.strip()
     ]
