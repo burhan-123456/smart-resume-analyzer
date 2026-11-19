@@ -39,19 +39,16 @@ if submitted:
         "experience": experience,
         "education": education
     }
-
     try:
         response = requests.post(
-            f"{API_URL}/submit-resume",
-            json=payload,
-            timeout=5
+            f"{API_URL}/submit-resume", json=payload, timeout=5
         )
         response.raise_for_status()
         result = response.json()
         st.success(result["message"])
         st.info(f"Candidate ID: {result['resume_id']}")
-    except requests.RequestException:
-        st.error("Unable to submit resume")
+    except requests.RequestException as error:
+        st.error(f"Unable to submit resume: {error}")
 
 st.divider()
 st.subheader("Saved Candidates")
@@ -103,7 +100,6 @@ if st.button("Calculate Match"):
 
 if "match_result" in st.session_state:
     result = st.session_state["match_result"]
-
     st.metric("Skill Match", f"{result['score']}%")
 
     st.subheader("Missing Skills")
@@ -130,14 +126,11 @@ st.subheader("Overall Resume Score")
 with st.form("overall_score_form"):
     score_skills = st.slider("Skill Match Score", 0, 100, 50)
     score_experience = st.number_input(
-        "Years of Experience",
-        min_value=0,
-        max_value=50,
+        "Years of Experience", min_value=0, max_value=50,
         key="score_experience"
     )
     score_education = st.selectbox(
-        "Education",
-        ["Diploma", "BTech", "MTech", "PhD"]
+        "Education", ["Diploma", "BTech", "MTech", "PhD"]
     )
     calculate = st.form_submit_button("Calculate Overall Score")
 
@@ -192,11 +185,9 @@ if st.button("Search Candidates"):
     try:
         response = requests.get(
             f"{API_URL}/search-candidates",
-            params={"name": search_name},
-            timeout=5
+            params={"name": search_name}, timeout=5
         )
         response.raise_for_status()
-
         results = response.json()
         if results:
             st.dataframe(results, use_container_width=True)
@@ -214,11 +205,9 @@ if st.button("Filter Candidates"):
     try:
         response = requests.get(
             f"{API_URL}/filter-skills",
-            params={"skill": filter_skill},
-            timeout=5
+            params={"skill": filter_skill}, timeout=5
         )
         response.raise_for_status()
-
         results = response.json()
         if results:
             st.dataframe(results, use_container_width=True)
@@ -231,18 +220,49 @@ st.divider()
 st.subheader("Delete Candidate")
 
 delete_id = st.number_input(
-    "Candidate ID to Delete",
-    min_value=1,
-    step=1
+    "Candidate ID to Delete", min_value=1, step=1
 )
 
 if st.button("Delete Candidate"):
     try:
         response = requests.delete(
-            f"{API_URL}/resumes/{delete_id}",
-            timeout=5
+            f"{API_URL}/resumes/{delete_id}", timeout=5
         )
         response.raise_for_status()
         st.success(response.json()["message"])
     except requests.RequestException:
         st.error("Unable to delete candidate")
+
+st.divider()
+st.subheader("Update Candidate")
+
+with st.form("update_candidate"):
+    update_id = st.number_input(
+        "Candidate ID", min_value=1, step=1, key="update_id"
+    )
+    update_name = st.text_input("Updated Name")
+    update_email = st.text_input("Updated Email")
+    update_skills = st.text_input("Updated Skills")
+    update_experience = st.number_input(
+        "Updated Experience", min_value=0, max_value=50
+    )
+    update_education = st.text_input("Updated Education")
+    update_submitted = st.form_submit_button("Update Candidate")
+
+if update_submitted:
+    payload = {
+        "name": update_name,
+        "email": update_email,
+        "skills": update_skills,
+        "experience": update_experience,
+        "education": update_education
+    }
+    try:
+        response = requests.put(
+            f"{API_URL}/resumes/{update_id}",
+            json=payload, timeout=5
+        )
+        response.raise_for_status()
+        st.success(response.json()["message"])
+    except requests.RequestException:
+        st.error("Unable to update candidate")

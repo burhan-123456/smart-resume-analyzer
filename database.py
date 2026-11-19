@@ -12,7 +12,6 @@ def get_connection():
 
 def init_db():
     connection = get_connection()
-
     try:
         connection.execute("""
             CREATE TABLE IF NOT EXISTS resumes (
@@ -20,11 +19,10 @@ def init_db():
                 name TEXT NOT NULL,
                 email TEXT NOT NULL,
                 skills TEXT NOT NULL,
-                experience INTEGER DEFAULT 0,
+                experience REAL DEFAULT 0,
                 education TEXT
             )
         """)
-
         connection.commit()
     finally:
         connection.close()
@@ -32,20 +30,15 @@ def init_db():
 
 def save_resume(data):
     connection = get_connection()
-
     try:
         cursor = connection.execute("""
             INSERT INTO resumes
             (name, email, skills, experience, education)
             VALUES (?, ?, ?, ?, ?)
         """, (
-            data["name"],
-            data["email"],
-            data["skills"],
-            data["experience"],
-            data["education"]
+            data["name"], data["email"], data["skills"],
+            data["experience"], data["education"]
         ))
-
         connection.commit()
         return cursor.lastrowid
     finally:
@@ -54,12 +47,10 @@ def save_resume(data):
 
 def get_all_resumes():
     connection = get_connection()
-
     try:
         rows = connection.execute(
             "SELECT * FROM resumes ORDER BY id DESC"
         ).fetchall()
-
         return [dict(row) for row in rows]
     finally:
         connection.close()
@@ -67,13 +58,28 @@ def get_all_resumes():
 
 def delete_resume(resume_id):
     connection = get_connection()
-
     try:
         cursor = connection.execute(
-            "DELETE FROM resumes WHERE id = ?",
-            (resume_id,)
+            "DELETE FROM resumes WHERE id = ?", (resume_id,)
         )
+        connection.commit()
+        return cursor.rowcount > 0
+    finally:
+        connection.close()
 
+
+def update_resume(resume_id, data):
+    connection = get_connection()
+    try:
+        cursor = connection.execute("""
+            UPDATE resumes
+            SET name = ?, email = ?, skills = ?,
+                experience = ?, education = ?
+            WHERE id = ?
+        """, (
+            data["name"], data["email"], data["skills"],
+            data["experience"], data["education"], resume_id
+        ))
         connection.commit()
         return cursor.rowcount > 0
     finally:
