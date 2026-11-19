@@ -5,15 +5,27 @@ import io
 from flask import Flask, jsonify, request, Response
 
 from services import (
-    get_connection, init_db, save_resume,
-    get_all_resumes, delete_resume, update_resume,
-    save_analysis, get_analysis_history,
-    parse_skills, extract_keywords, compare_skills,
-    calculate_match_score, generate_suggestions,
-    calculate_experience_score, calculate_education_score,
-    calculate_overall_score, validate_resume,
-    get_skill_frequency, get_statistics,
-    get_candidate, compare_candidates
+    get_connection,
+    init_db,
+    save_resume,
+    get_all_resumes,
+    delete_resume,
+    update_resume,
+    save_analysis,
+    get_analysis_history,
+    parse_skills,
+    extract_keywords,
+    compare_skills,
+    calculate_match_score,
+    generate_suggestions,
+    calculate_experience_score,
+    calculate_education_score,
+    calculate_overall_score,
+    validate_resume,
+    get_skill_frequency,
+    get_statistics,
+    get_candidate,
+    compare_candidates
 )
 
 app = Flask(__name__)
@@ -27,10 +39,35 @@ def home():
     })
 
 
-@app.route("/database-status")
+@app.route("/health", methods=["GET"])
+def health_check():
+    try:
+        connection = get_connection()
+        try:
+            connection.execute("SELECT 1")
+        finally:
+            connection.close()
+
+        return jsonify({
+            "status": "healthy",
+            "api": "running",
+            "database": "connected"
+        }), 200
+
+    except Exception:
+        app.logger.exception("Database health check failed")
+        return jsonify({
+            "status": "unhealthy",
+            "api": "running",
+            "database": "unavailable"
+        }), 503
+
+
+@app.route("/database-status", methods=["GET"])
 def database_status():
     connection = get_connection()
     connection.close()
+
     return jsonify({
         "database": "SQLite",
         "status": "connected"
@@ -39,7 +76,9 @@ def database_status():
 
 @app.route("/submit-resume", methods=["POST"])
 def submit_resume():
-    data, error = validate_resume(request.get_json(silent=True))
+    data, error = validate_resume(
+        request.get_json(silent=True)
+    )
 
     if error:
         return jsonify({"error": error}), 400
@@ -63,12 +102,16 @@ def keywords_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     description = data.get("description", "")
 
     if not isinstance(description, str):
-        return jsonify({"error": "Invalid description"}), 400
+        return jsonify({
+            "error": "Invalid description"
+        }), 400
 
     return jsonify({
         "keywords": extract_keywords(description)
@@ -80,17 +123,30 @@ def compare_skills_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     candidate = data.get("candidate_skills", "")
     required = data.get("required_skills", "")
 
-    if not isinstance(candidate, str) or not isinstance(required, str):
-        return jsonify({"error": "Skills must be text"}), 400
+    if (
+        not isinstance(candidate, str)
+        or not isinstance(required, str)
+    ):
+        return jsonify({
+            "error": "Skills must be text"
+        }), 400
 
     result = compare_skills(candidate, required)
-    result["score"] = calculate_match_score(candidate, required)
-    result["suggestions"] = generate_suggestions(result["missing"])
+
+    result["score"] = calculate_match_score(
+        candidate, required
+    )
+
+    result["suggestions"] = generate_suggestions(
+        result["missing"]
+    )
 
     return jsonify(result)
 
@@ -100,7 +156,9 @@ def experience_score_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     years = data.get("experience", 0)
 
@@ -109,7 +167,9 @@ def experience_score_api():
         or not isinstance(years, (int, float))
         or not 0 <= years <= 50
     ):
-        return jsonify({"error": "Invalid experience"}), 400
+        return jsonify({
+            "error": "Invalid experience"
+        }), 400
 
     return jsonify({
         "experience_score": calculate_experience_score(years)
@@ -121,15 +181,21 @@ def education_score_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     education = data.get("education", "")
 
     if not isinstance(education, str):
-        return jsonify({"error": "Invalid education"}), 400
+        return jsonify({
+            "error": "Invalid education"
+        }), 400
 
     return jsonify({
-        "education_score": calculate_education_score(education)
+        "education_score": calculate_education_score(
+            education
+        )
     })
 
 
@@ -138,7 +204,9 @@ def overall_score_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     skill_score = data.get("skill_score")
     experience = data.get("experience")
@@ -153,12 +221,18 @@ def overall_score_api():
         or not 0 <= experience <= 50
         or not isinstance(education, str)
     ):
-        return jsonify({"error": "Invalid score inputs"}), 400
+        return jsonify({
+            "error": "Invalid score inputs"
+        }), 400
+
+    score = calculate_overall_score(
+        skill_score,
+        experience,
+        education
+    )
 
     return jsonify({
-        "overall_score": calculate_overall_score(
-            skill_score, experience, education
-        )
+        "overall_score": score
     })
 
 
@@ -167,18 +241,26 @@ def rank_candidates():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     required = data.get("required_skills", "")
 
-    if not isinstance(required, str) or not parse_skills(required):
-        return jsonify({"error": "Required skills are missing"}), 400
+    if (
+        not isinstance(required, str)
+        or not parse_skills(required)
+    ):
+        return jsonify({
+            "error": "Required skills are missing"
+        }), 400
 
     candidates = get_all_resumes()
 
     for candidate in candidates:
         candidate["match_score"] = calculate_match_score(
-            candidate["skills"], required
+            candidate["skills"],
+            required
         )
 
     candidates.sort(
@@ -191,31 +273,47 @@ def rank_candidates():
 
 @app.route("/search-candidates", methods=["GET"])
 def search_candidates():
-    keyword = request.args.get("name", "").strip().lower()
+    keyword = request.args.get(
+        "name", ""
+    ).strip().lower()
 
-    return jsonify([
-        candidate for candidate in get_all_resumes()
+    candidates = get_all_resumes()
+
+    results = [
+        candidate
+        for candidate in candidates
         if keyword in candidate["name"].lower()
-    ])
+    ]
+
+    return jsonify(results)
 
 
 @app.route("/filter-skills", methods=["GET"])
 def filter_skills():
-    skill = request.args.get("skill", "").strip().lower()
+    skill = request.args.get(
+        "skill", ""
+    ).strip().lower()
 
     if not skill:
         return jsonify([])
 
-    return jsonify([
-        candidate for candidate in get_all_resumes()
+    candidates = get_all_resumes()
+
+    results = [
+        candidate
+        for candidate in candidates
         if skill in parse_skills(candidate["skills"])
-    ])
+    ]
+
+    return jsonify(results)
 
 
 @app.route("/resumes/<int:resume_id>", methods=["DELETE"])
 def delete_resume_api(resume_id):
     if not delete_resume(resume_id):
-        return jsonify({"error": "Candidate not found"}), 404
+        return jsonify({
+            "error": "Candidate not found"
+        }), 404
 
     return jsonify({
         "message": "Candidate deleted successfully"
@@ -224,13 +322,19 @@ def delete_resume_api(resume_id):
 
 @app.route("/resumes/<int:resume_id>", methods=["PUT"])
 def update_resume_api(resume_id):
-    data, error = validate_resume(request.get_json(silent=True))
+    data, error = validate_resume(
+        request.get_json(silent=True)
+    )
 
     if error:
-        return jsonify({"error": error}), 400
+        return jsonify({
+            "error": error
+        }), 400
 
     if not update_resume(resume_id, data):
-        return jsonify({"error": "Candidate not found"}), 404
+        return jsonify({
+            "error": "Candidate not found"
+        }), 404
 
     return jsonify({
         "message": "Candidate updated successfully"
@@ -242,31 +346,39 @@ def save_analysis_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     candidate_id = data.get("candidate_id")
     required_skills = data.get("required_skills")
 
     if (
-        isinstance(candidate_id, bool)
-        or not isinstance(candidate_id, int)
+        type(candidate_id) is not int
         or candidate_id < 1
         or not isinstance(required_skills, str)
         or not parse_skills(required_skills)
     ):
-        return jsonify({"error": "Invalid analysis inputs"}), 400
+        return jsonify({
+            "error": "Invalid analysis inputs"
+        }), 400
 
     candidate = get_candidate(candidate_id)
 
     if candidate is None:
-        return jsonify({"error": "Candidate not found"}), 404
+        return jsonify({
+            "error": "Candidate not found"
+        }), 404
 
     score = calculate_match_score(
-        candidate["skills"], required_skills
+        candidate["skills"],
+        required_skills
     )
 
     analysis_id = save_analysis(
-        candidate_id, required_skills, score
+        candidate_id,
+        required_skills,
+        score
     )
 
     return jsonify({
@@ -296,7 +408,9 @@ def compare_candidates_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     id1 = data.get("candidate_id_1")
     id2 = data.get("candidate_id_2")
@@ -305,22 +419,31 @@ def compare_candidates_api():
     if (
         type(id1) is not int
         or type(id2) is not int
-        or id1 < 1 or id2 < 1
+        or id1 < 1
+        or id2 < 1
         or id1 == id2
         or not isinstance(required, str)
         or not parse_skills(required)
     ):
-        return jsonify({"error": "Invalid comparison inputs"}), 400
+        return jsonify({
+            "error": "Invalid comparison inputs"
+        }), 400
 
     candidate1 = get_candidate(id1)
     candidate2 = get_candidate(id2)
 
     if candidate1 is None or candidate2 is None:
-        return jsonify({"error": "Candidate not found"}), 404
+        return jsonify({
+            "error": "Candidate not found"
+        }), 404
 
-    return jsonify(
-        compare_candidates(candidate1, candidate2, required)
+    result = compare_candidates(
+        candidate1,
+        candidate2,
+        required
     )
+
+    return jsonify(result)
 
 
 @app.route("/top-candidates", methods=["POST"])
@@ -328,22 +451,33 @@ def top_candidates_api():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
 
     required = data.get("required_skills", "")
 
-    if not isinstance(required, str) or not parse_skills(required):
-        return jsonify({"error": "Required skills are missing"}), 400
+    if (
+        not isinstance(required, str)
+        or not parse_skills(required)
+    ):
+        return jsonify({
+            "error": "Required skills are missing"
+        }), 400
 
     candidates = get_all_resumes()
 
     for candidate in candidates:
         candidate["match_score"] = calculate_match_score(
-            candidate["skills"], required
+            candidate["skills"],
+            required
         )
 
     candidates.sort(
-        key=lambda c: (-c["match_score"], c["id"])
+        key=lambda c: (
+            -c["match_score"],
+            c["id"]
+        )
     )
 
     return jsonify(candidates[:5])
@@ -357,8 +491,12 @@ def export_candidates_api():
     writer = csv.writer(output)
 
     writer.writerow([
-        "ID", "Name", "Email",
-        "Skills", "Experience", "Education"
+        "ID",
+        "Name",
+        "Email",
+        "Skills",
+        "Experience",
+        "Education"
     ])
 
     for candidate in candidates:
@@ -383,4 +521,8 @@ def export_candidates_api():
 
 if __name__ == "__main__":
     init_db()
-    app.run(port=5000, debug=True)
+    app.run(
+        host="127.0.0.1",
+        port=5000,
+        debug=True
+    )
