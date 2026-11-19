@@ -32,8 +32,21 @@ with st.form("resume_form"):
     submitted = st.form_submit_button("Submit Resume")
 
 if submitted:
-    st.write("Name:", name)
-    st.write("Email:", email)
-    st.write("Skills:", skills)
-    st.write("Experience:", experience)
-    st.write("Education:", education)
+    payload = {
+        "name": name,
+        "email": email,
+        "skills": skills,
+        "experience": experience,
+        "education": education
+    }
+
+    try:
+        response = requests.post(
+            f"{API_URL}/submit-resume",
+            json=payload,
+            timeout=5
+        )
+        response.raise_for_status()
+        st.success(response.json()["message"])
+    except requests.RequestException:
+        st.error("Unable to submit resume")
