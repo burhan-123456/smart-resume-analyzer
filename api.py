@@ -43,6 +43,17 @@ def compare_skills(candidate_skills, required_skills):
     }
 
 
+def calculate_match_score(candidate_skills, required_skills):
+    required = set(parse_skills(required_skills))
+
+    if not required:
+        return 0.0
+
+    matched = set(parse_skills(candidate_skills)) & required
+
+    return round(len(matched) / len(required) * 100, 2)
+
+
 @app.route("/")
 def home():
     return jsonify({
@@ -139,9 +150,13 @@ def compare_skills_api():
     )):
         return jsonify({"error": "Skills must be text"}), 400
 
-    return jsonify(compare_skills(
+    result = compare_skills(candidate_skills, required_skills)
+
+    result["score"] = calculate_match_score(
         candidate_skills, required_skills
-    ))
+    )
+
+    return jsonify(result)
 
 
 if __name__ == "__main__":
