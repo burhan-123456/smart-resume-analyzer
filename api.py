@@ -40,10 +40,8 @@ def calculate_match_score(candidate_skills, required_skills):
     required = set(parse_skills(required_skills))
     if not required:
         return 0.0
-    return round(
-        len(set(parse_skills(candidate_skills)) & required)
-        / len(required) * 100, 2
-    )
+    matched = set(parse_skills(candidate_skills)) & required
+    return round(len(matched) / len(required) * 100, 2)
 
 
 def generate_suggestions(missing_skills):
@@ -247,6 +245,28 @@ def overall_score_api():
             skill_score, experience, education
         )
     })
+
+
+@app.route("/rank-candidates", methods=["POST"])
+def rank_candidates():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    required_skills = data.get("required_skills", "")
+
+    if not isinstance(required_skills, str) or not parse_skills(required_skills):
+        return jsonify({"error": "Required skills are missing"}), 400
+
+    candidates = get_all_resumes()
+
+    for candidate in candidates:
+        candidate["match_score"] = calculate_match_score(
+            candidate["skills"], required_skills
+        )
+
+    return jsonify(candidates)
 
 
 if __name__ == "__main__":
