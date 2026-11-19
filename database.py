@@ -48,7 +48,6 @@ def save_resume(data):
 
         connection.commit()
         return cursor.lastrowid
-
     finally:
         connection.close()
 
@@ -62,6 +61,20 @@ def get_all_resumes():
         ).fetchall()
 
         return [dict(row) for row in rows]
+    finally:
+        connection.close()
 
+
+def delete_resume(resume_id):
+    connection = get_connection()
+
+    try:
+        cursor = connection.execute(
+            "DELETE FROM resumes WHERE id = ?",
+            (resume_id,)
+        )
+
+        connection.commit()
+        return cursor.rowcount > 0
     finally:
         connection.close()

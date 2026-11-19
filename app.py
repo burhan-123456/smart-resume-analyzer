@@ -220,11 +220,29 @@ if st.button("Filter Candidates"):
         response.raise_for_status()
 
         results = response.json()
-
         if results:
             st.dataframe(results, use_container_width=True)
         else:
             st.info("No candidates found with this skill")
-
     except requests.RequestException:
         st.error("Unable to filter candidates")
+
+st.divider()
+st.subheader("Delete Candidate")
+
+delete_id = st.number_input(
+    "Candidate ID to Delete",
+    min_value=1,
+    step=1
+)
+
+if st.button("Delete Candidate"):
+    try:
+        response = requests.delete(
+            f"{API_URL}/resumes/{delete_id}",
+            timeout=5
+        )
+        response.raise_for_status()
+        st.success(response.json()["message"])
+    except requests.RequestException:
+        st.error("Unable to delete candidate")

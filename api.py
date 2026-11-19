@@ -1,7 +1,13 @@
 
 import re
 from flask import Flask, jsonify, request
-from database import get_connection, init_db, save_resume, get_all_resumes
+from database import (
+    get_connection,
+    init_db,
+    save_resume,
+    get_all_resumes,
+    delete_resume
+)
 
 app = Flask(__name__)
 
@@ -302,6 +308,18 @@ def filter_candidates_by_skills():
     ]
 
     return jsonify(results)
+
+
+@app.route("/resumes/<int:resume_id>", methods=["DELETE"])
+def delete_resume_api(resume_id):
+    deleted = delete_resume(resume_id)
+
+    if not deleted:
+        return jsonify({"error": "Candidate not found"}), 404
+
+    return jsonify({
+        "message": "Candidate deleted successfully"
+    })
 
 
 if __name__ == "__main__":
