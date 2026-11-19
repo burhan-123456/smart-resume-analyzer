@@ -287,6 +287,23 @@ def search_candidates():
     return jsonify(results)
 
 
+@app.route("/filter-skills", methods=["GET"])
+def filter_candidates_by_skills():
+    skill = request.args.get("skill", "").strip().lower()
+
+    if not skill:
+        return jsonify([])
+
+    candidates = get_all_resumes()
+
+    results = [
+        candidate for candidate in candidates
+        if skill in parse_skills(candidate["skills"])
+    ]
+
+    return jsonify(results)
+
+
 if __name__ == "__main__":
     init_db()
     app.run(port=5000, debug=True)

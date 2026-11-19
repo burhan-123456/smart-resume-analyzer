@@ -198,11 +198,33 @@ if st.button("Search Candidates"):
         response.raise_for_status()
 
         results = response.json()
-
         if results:
             st.dataframe(results, use_container_width=True)
         else:
             st.info("No matching candidates found")
-
     except requests.RequestException:
         st.error("Candidate search failed")
+
+st.divider()
+st.subheader("Filter Candidates by Skill")
+
+filter_skill = st.text_input("Skill to Filter")
+
+if st.button("Filter Candidates"):
+    try:
+        response = requests.get(
+            f"{API_URL}/filter-skills",
+            params={"skill": filter_skill},
+            timeout=5
+        )
+        response.raise_for_status()
+
+        results = response.json()
+
+        if results:
+            st.dataframe(results, use_container_width=True)
+        else:
+            st.info("No candidates found with this skill")
+
+    except requests.RequestException:
+        st.error("Unable to filter candidates")
