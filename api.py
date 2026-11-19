@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from database import get_connection
 from database import get_connection, init_db
 from flask import Flask, jsonify, request
-
+from database import get_connection, init_db, save_resume
 
 app = Flask(__name__)
 
@@ -32,13 +32,15 @@ def submit_resume():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
 
+    resume_id = save_resume(data)
+
     return jsonify({
-        "message": "Resume received successfully",
-        "candidate": data
+        "message": "Resume saved successfully",
+        "id": resume_id
     }), 201
 
 
-    
+
 if __name__ == "__main__":
     init_db()
     app.run(port=5000, debug=True)
