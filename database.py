@@ -13,19 +13,21 @@ def get_connection():
 def init_db():
     connection = get_connection()
 
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS resumes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            skills TEXT NOT NULL,
-            experience INTEGER DEFAULT 0,
-            education TEXT
-        )
-    """)
+    try:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS resumes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                skills TEXT NOT NULL,
+                experience INTEGER DEFAULT 0,
+                education TEXT
+            )
+        """)
 
-    connection.commit()
-    connection.close()
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def save_resume(data):
@@ -46,6 +48,20 @@ def save_resume(data):
 
         connection.commit()
         return cursor.lastrowid
+
+    finally:
+        connection.close()
+
+
+def get_all_resumes():
+    connection = get_connection()
+
+    try:
+        rows = connection.execute(
+            "SELECT * FROM resumes ORDER BY id DESC"
+        ).fetchall()
+
+        return [dict(row) for row in rows]
 
     finally:
         connection.close()

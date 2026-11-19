@@ -1,8 +1,11 @@
-from flask import Flask, jsonify
-from database import get_connection
-from database import get_connection, init_db
+
 from flask import Flask, jsonify, request
-from database import get_connection, init_db, save_resume
+from database import (
+    get_connection,
+    init_db,
+    save_resume,
+    get_all_resumes
+)
 
 app = Flask(__name__)
 
@@ -13,6 +16,7 @@ def home():
         "message": "Smart Resume Analyzer API",
         "status": "running"
     })
+
 
 @app.route("/database-status")
 def database_status():
@@ -30,7 +34,19 @@ def submit_resume():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid JSON data"}), 400
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
+
+    required_fields = [
+        "name", "email", "skills",
+        "experience", "education"
+    ]
+
+    if any(field not in data for field in required_fields):
+        return jsonify({
+            "error": "Missing required fields"
+        }), 400
 
     resume_id = save_resume(data)
 
@@ -39,6 +55,11 @@ def submit_resume():
         "id": resume_id
     }), 201
 
+
+@app.route("/resumes", methods=["GET"])
+def list_resumes():
+    resumes = get_all_resumes()
+    return jsonify(resumes)
 
 
 if __name__ == "__main__":
