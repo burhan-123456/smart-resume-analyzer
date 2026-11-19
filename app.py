@@ -72,3 +72,18 @@ if st.button("View Saved Resumes"):
 
     except requests.RequestException:
         st.error("Unable to load resumes")
+
+st.divider()
+st.subheader("Job Description Analysis")
+
+job_description = st.text_area(
+    "Enter Job Description",
+    placeholder="Looking for a Python developer with Flask and SQL skills"
+)
+
+if st.button("Analyze Job Description"):
+    if job_description.strip():
+        st.session_state["job_description"] = job_description
+        st.success("Job description added")
+    else:
+        st.warning("Please enter a job description")
