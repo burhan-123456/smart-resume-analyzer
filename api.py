@@ -7,11 +7,12 @@ app = Flask(__name__)
 
 
 def parse_skills(skills):
-    return [
+    cleaned = [
         skill.strip().lower()
         for skill in skills.split(",")
         if skill.strip()
     ]
+    return list(dict.fromkeys(cleaned))
 
 
 @app.route("/")
