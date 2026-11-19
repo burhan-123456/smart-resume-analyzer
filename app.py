@@ -33,11 +33,8 @@ with st.form("resume_form"):
 
 if submitted:
     payload = {
-        "name": name,
-        "email": email,
-        "skills": skills,
-        "experience": experience,
-        "education": education
+        "name": name, "email": email, "skills": skills,
+        "experience": experience, "education": education
     }
     try:
         response = requests.post(
@@ -47,8 +44,8 @@ if submitted:
         result = response.json()
         st.success(result["message"])
         st.info(f"Candidate ID: {result['resume_id']}")
-    except requests.RequestException as error:
-        st.error(f"Unable to submit resume: {error}")
+    except requests.RequestException:
+        st.error("Unable to submit resume")
 
 st.divider()
 st.subheader("Saved Candidates")
@@ -251,8 +248,7 @@ with st.form("update_candidate"):
 
 if update_submitted:
     payload = {
-        "name": update_name,
-        "email": update_email,
+        "name": update_name, "email": update_email,
         "skills": update_skills,
         "experience": update_experience,
         "education": update_education
@@ -266,3 +262,43 @@ if update_submitted:
         st.success(response.json()["message"])
     except requests.RequestException:
         st.error("Unable to update candidate")
+
+st.divider()
+st.subheader("Analysis History")
+
+with st.form("analysis_form"):
+    history_id = st.number_input(
+        "Candidate ID for Analysis", min_value=1, step=1
+    )
+    history_skills = st.text_input("Required Skills for Analysis")
+    save_history = st.form_submit_button("Save Analysis")
+
+if save_history:
+    try:
+        response = requests.post(
+            f"{API_URL}/save-analysis",
+            json={
+                "candidate_id": history_id,
+                "required_skills": history_skills
+            },
+            timeout=5
+        )
+        response.raise_for_status()
+        st.success("Analysis saved successfully")
+        st.metric("Saved Match Score", f"{response.json()['match_score']}%")
+    except requests.RequestException:
+        st.error("Unable to save analysis")
+
+if st.button("View Analysis History"):
+    try:
+        response = requests.get(
+            f"{API_URL}/analysis-history", timeout=5
+        )
+        response.raise_for_status()
+        history = response.json()
+        if history:
+            st.dataframe(history, use_container_width=True)
+        else:
+            st.info("No analysis history available")
+    except requests.RequestException:
+        st.error("Unable to load analysis history")

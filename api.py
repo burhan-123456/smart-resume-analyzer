@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request
 from database import (
     get_connection, init_db, save_resume,
     get_all_resumes, delete_resume, update_resume,
-    save_analysis
+    save_analysis, get_analysis_history
 )
 
 app = Flask(__name__)
@@ -340,20 +340,16 @@ def save_analysis_api():
         return jsonify({"error": "Invalid analysis inputs"}), 400
 
     candidate = next(
-        (
-            item for item in get_all_resumes()
-            if item["id"] == candidate_id
-        ),
+        (item for item in get_all_resumes()
+         if item["id"] == candidate_id),
         None
     )
-
     if candidate is None:
         return jsonify({"error": "Candidate not found"}), 404
 
     score = calculate_match_score(
         candidate["skills"], required_skills
     )
-
     analysis_id = save_analysis(candidate_id, required_skills, score)
 
     return jsonify({
@@ -361,6 +357,11 @@ def save_analysis_api():
         "match_score": score,
         "message": "Analysis saved successfully"
     }), 201
+
+
+@app.route("/analysis-history", methods=["GET"])
+def analysis_history_api():
+    return jsonify(get_analysis_history())
 
 
 if __name__ == "__main__":

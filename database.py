@@ -109,3 +109,15 @@ def save_analysis(candidate_id, required_skills, match_score):
         return cursor.lastrowid
     finally:
         connection.close()
+
+
+def get_analysis_history():
+    connection = get_connection()
+    try:
+        rows = connection.execute("""
+            SELECT * FROM analysis_history
+            ORDER BY analyzed_at DESC, id DESC
+        """).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        connection.close()
