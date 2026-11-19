@@ -1,11 +1,6 @@
 
 from flask import Flask, jsonify, request
-from database import (
-    get_connection,
-    init_db,
-    save_resume,
-    get_all_resumes
-)
+from database import get_connection, init_db, save_resume, get_all_resumes
 
 app = Flask(__name__)
 
@@ -34,32 +29,27 @@ def submit_resume():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({
-            "error": "Invalid JSON data"
-        }), 400
+        return jsonify({"error": "Invalid JSON data"}), 400
 
     required_fields = [
-        "name", "email", "skills",
-        "experience", "education"
+        "name", "email", "skills", "experience", "education"
     ]
 
     if any(field not in data for field in required_fields):
-        return jsonify({
-            "error": "Missing required fields"
-        }), 400
+        return jsonify({"error": "Missing required fields"}), 400
 
     resume_id = save_resume(data)
 
     return jsonify({
         "message": "Resume saved successfully",
-        "id": resume_id
+        "resume_id": resume_id,
+        "status": "created"
     }), 201
 
 
 @app.route("/resumes", methods=["GET"])
 def list_resumes():
-    resumes = get_all_resumes()
-    return jsonify(resumes)
+    return jsonify(get_all_resumes())
 
 
 if __name__ == "__main__":
