@@ -97,8 +97,7 @@ if st.button("Calculate Match"):
             timeout=5
         )
         response.raise_for_status()
-        result = response.json()
-        st.session_state["match_result"] = result
+        st.session_state["match_result"] = response.json()
     except requests.RequestException:
         st.error("Unable to calculate matching score")
 
@@ -107,9 +106,15 @@ if "match_result" in st.session_state:
     st.metric("Skill Match", f"{result['score']}%")
 
     st.subheader("Missing Skills")
-
     if result["missing"]:
         for skill in result["missing"]:
             st.warning(f"Missing: {skill}")
     else:
         st.success("No missing skills")
+
+    st.subheader("Matched Skills")
+    if result["matched"]:
+        for skill in result["matched"]:
+            st.success(f"Matched: {skill}")
+    else:
+        st.info("No matching skills found")
