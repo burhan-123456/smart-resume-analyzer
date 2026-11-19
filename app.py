@@ -71,10 +71,7 @@ if st.button("View Saved Resumes"):
 st.divider()
 st.subheader("Job Description Analysis")
 
-job_description = st.text_area(
-    "Enter Job Description",
-    placeholder="Looking for a Python developer with Flask and SQL skills"
-)
+job_description = st.text_area("Enter Job Description")
 
 if st.button("Analyze Job Description"):
     if job_description.strip():
@@ -86,15 +83,8 @@ if st.button("Analyze Job Description"):
 st.divider()
 st.subheader("Resume Match Score")
 
-candidate_skills = st.text_input(
-    "Candidate Skills for Matching",
-    placeholder="python, flask, sql"
-)
-
-required_skills = st.text_input(
-    "Required Job Skills",
-    placeholder="python, flask, machine learning"
-)
+candidate_skills = st.text_input("Candidate Skills for Matching")
+required_skills = st.text_input("Required Job Skills")
 
 if st.button("Calculate Match"):
     try:
@@ -108,9 +98,18 @@ if st.button("Calculate Match"):
         )
         response.raise_for_status()
         result = response.json()
-
         st.session_state["match_result"] = result
-        st.metric("Skill Match", f"{result['score']}%")
-
     except requests.RequestException:
         st.error("Unable to calculate matching score")
+
+if "match_result" in st.session_state:
+    result = st.session_state["match_result"]
+    st.metric("Skill Match", f"{result['score']}%")
+
+    st.subheader("Missing Skills")
+
+    if result["missing"]:
+        for skill in result["missing"]:
+            st.warning(f"Missing: {skill}")
+    else:
+        st.success("No missing skills")
