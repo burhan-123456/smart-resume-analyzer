@@ -32,6 +32,32 @@ def api_request(method, endpoint, **kwargs):
 if api_request("GET", "/"):
     st.success("Connected to Flask Backend")
 
+st.subheader("Dashboard Statistics")
+
+if st.button("Load Dashboard Statistics"):
+    stats = api_request("GET", "/statistics")
+
+    if stats is not None:
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Total Candidates",
+            stats["total_candidates"]
+        )
+        col2.metric(
+            "Total Analyses",
+            stats["total_analyses"]
+        )
+        col3.metric(
+            "Average Experience",
+            f"{stats['average_experience']} years"
+        )
+        col4.metric(
+            "Unique Skills",
+            stats["unique_skills"]
+        )
+
+st.divider()
 st.subheader("Candidate Details")
 
 with st.form("resume_form"):
@@ -56,8 +82,7 @@ if submitted:
             "education": education
         }
     )
-
-    if result:
+    if result is not None:
         st.success(result["message"])
         st.info(f"Candidate ID: {result['resume_id']}")
 
@@ -66,7 +91,6 @@ st.subheader("Saved Candidates")
 
 if st.button("View Saved Resumes"):
     resumes = api_request("GET", "/resumes")
-
     if resumes is not None:
         if resumes:
             st.dataframe(resumes, use_container_width=True)
@@ -110,7 +134,6 @@ if st.button("Calculate Match"):
 
 if "match_result" in st.session_state:
     result = st.session_state["match_result"]
-
     st.metric("Skill Match", f"{result['score']}%")
 
     st.subheader("Missing Skills")
@@ -176,7 +199,6 @@ if st.button("Rank Candidates"):
         "/rank-candidates",
         json={"required_skills": ranking_skills}
     )
-
     if candidates is not None:
         if candidates:
             st.dataframe(candidates, use_container_width=True)
@@ -287,7 +309,6 @@ if save_history:
 
 if st.button("View Analysis History"):
     history = api_request("GET", "/analysis-history")
-
     if history is not None:
         if history:
             st.dataframe(history, use_container_width=True)
@@ -309,13 +330,7 @@ if st.button("Show Skill Frequency"):
             df = df.sort_values(
                 by="Count", ascending=False
             )
-
-            st.subheader("Most Common Skills")
             st.dataframe(df, use_container_width=True)
-
-            st.subheader("Skill Frequency Chart")
-            st.bar_chart(
-                df.set_index("Skill")["Count"]
-            )
+            st.bar_chart(df.set_index("Skill")["Count"])
         else:
             st.info("No skill data available")

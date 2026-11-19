@@ -374,6 +374,35 @@ def skill_frequency_api():
     return jsonify(dict(counter.most_common()))
 
 
+@app.route("/statistics", methods=["GET"])
+def statistics_api():
+    candidates = get_all_resumes()
+    history = get_analysis_history()
+
+    total_candidates = len(candidates)
+    total_analyses = len(history)
+
+    average_experience = (
+        round(
+            sum(c["experience"] for c in candidates)
+            / total_candidates,
+            2
+        )
+        if total_candidates else 0
+    )
+
+    unique_skills = set()
+    for candidate in candidates:
+        unique_skills.update(parse_skills(candidate["skills"]))
+
+    return jsonify({
+        "total_candidates": total_candidates,
+        "total_analyses": total_analyses,
+        "average_experience": average_experience,
+        "unique_skills": len(unique_skills)
+    })
+
+
 if __name__ == "__main__":
     init_db()
     app.run(port=5000, debug=True)
