@@ -165,10 +165,7 @@ if "overall_score" in st.session_state:
 st.divider()
 st.subheader("Candidate Ranking")
 
-ranking_skills = st.text_input(
-    "Required Skills for Ranking",
-    placeholder="python, flask, sql"
-)
+ranking_skills = st.text_input("Required Skills for Ranking")
 
 if st.button("Rank Candidates"):
     try:
@@ -178,13 +175,34 @@ if st.button("Rank Candidates"):
             timeout=5
         )
         response.raise_for_status()
-
         candidates = response.json()
-
         if candidates:
             st.dataframe(candidates, use_container_width=True)
         else:
             st.info("No candidates available")
-
     except requests.RequestException:
         st.error("Unable to rank candidates")
+
+st.divider()
+st.subheader("Search Candidates")
+
+search_name = st.text_input("Candidate Name to Search")
+
+if st.button("Search Candidates"):
+    try:
+        response = requests.get(
+            f"{API_URL}/search-candidates",
+            params={"name": search_name},
+            timeout=5
+        )
+        response.raise_for_status()
+
+        results = response.json()
+
+        if results:
+            st.dataframe(results, use_container_width=True)
+        else:
+            st.info("No matching candidates found")
+
+    except requests.RequestException:
+        st.error("Candidate search failed")

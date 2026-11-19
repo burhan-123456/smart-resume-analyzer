@@ -274,6 +274,19 @@ def rank_candidates():
     return jsonify(candidates)
 
 
+@app.route("/search-candidates", methods=["GET"])
+def search_candidates():
+    keyword = request.args.get("name", "").strip().lower()
+    candidates = get_all_resumes()
+
+    results = [
+        candidate for candidate in candidates
+        if keyword in candidate["name"].lower()
+    ]
+
+    return jsonify(results)
+
+
 if __name__ == "__main__":
     init_db()
     app.run(port=5000, debug=True)
