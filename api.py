@@ -6,6 +6,14 @@ from database import get_connection, init_db, save_resume, get_all_resumes
 app = Flask(__name__)
 
 
+def parse_skills(skills):
+    return [
+        skill.strip()
+        for skill in skills.split(",")
+        if skill.strip()
+    ]
+
+
 @app.route("/")
 def home():
     return jsonify({
@@ -49,13 +57,12 @@ def submit_resume():
 
     skills = data.get("skills", "")
 
-    if not isinstance(skills, str) or not skills.strip():
-        return jsonify({
-            "error": "At least one skill is required"
-        }), 400
+    if not isinstance(skills, str) or not parse_skills(skills):
+        return jsonify({"error": "At least one skill is required"}), 400
 
     data["name"] = name.strip()
     data["email"] = email.strip().lower()
+    data["skills"] = ", ".join(parse_skills(skills))
 
     resume_id = save_resume(data)
 
