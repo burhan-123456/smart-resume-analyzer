@@ -40,8 +40,10 @@ def calculate_match_score(candidate_skills, required_skills):
     required = set(parse_skills(required_skills))
     if not required:
         return 0.0
-    matched = set(parse_skills(candidate_skills)) & required
-    return round(len(matched) / len(required) * 100, 2)
+    return round(
+        len(set(parse_skills(candidate_skills)) & required)
+        / len(required) * 100, 2
+    )
 
 
 def generate_suggestions(missing_skills):
@@ -69,16 +71,24 @@ def normalize_education(education):
 
 def calculate_education_score(education):
     education = normalize_education(education)
-
     if "phd" in education or "doctorate" in education:
         return 100
-    if any(word in education for word in ["mtech", "m.tech", "master", "mba"]):
+    if any(x in education for x in ["mtech", "m.tech", "master", "mba"]):
         return 90
-    if any(word in education for word in ["btech", "b.tech", "bachelor", "bsc"]):
+    if any(x in education for x in ["btech", "b.tech", "bachelor", "bsc"]):
         return 75
     if "diploma" in education:
         return 60
     return 40
+
+
+def calculate_overall_score(skill_score, experience, education):
+    return round(
+        skill_score * 0.60
+        + calculate_experience_score(experience) * 0.25
+        + calculate_education_score(education) * 0.15,
+        2
+    )
 
 
 @app.route("/")
@@ -106,10 +116,8 @@ def submit_resume():
     if any(field not in data for field in fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    name = data["name"]
-    email = data["email"]
-    skills = data["skills"]
-    experience = data["experience"]
+    name, email = data["name"], data["email"]
+    skills, experience = data["skills"], data["experience"]
     education = data["education"]
 
     if not isinstance(name, str) or len(name.strip()) < 2:
@@ -156,7 +164,6 @@ def keywords_api():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON data"}), 400
-
     description = data.get("description", "")
     if not isinstance(description, str):
         return jsonify({"error": "Invalid description"}), 400
@@ -211,6 +218,34 @@ def education_score_api():
 
     return jsonify({
         "education_score": calculate_education_score(education)
+    })
+
+
+@app.route("/overall-score", methods=["POST"])
+def overall_score_api():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    skill_score = data.get("skill_score")
+    experience = data.get("experience")
+    education = data.get("education")
+
+    if (
+        isinstance(skill_score, bool)
+        or not isinstance(skill_score, (int, float))
+        or not 0 <= skill_score <= 100
+        or isinstance(experience, bool)
+        or not isinstance(experience, (int, float))
+        or not 0 <= experience <= 50
+        or not isinstance(education, str)
+    ):
+        return jsonify({"error": "Invalid score inputs"}), 400
+
+    return jsonify({
+        "overall_score": calculate_overall_score(
+            skill_score, experience, education
+        )
     })
 
 
