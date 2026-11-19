@@ -3,9 +3,14 @@ import re
 from collections import Counter
 
 from database import (
-    get_connection, init_db, save_resume,
-    get_all_resumes, delete_resume, update_resume,
-    save_analysis, get_analysis_history
+    get_connection,
+    init_db,
+    save_resume,
+    get_all_resumes,
+    delete_resume,
+    update_resume,
+    save_analysis,
+    get_analysis_history
 )
 
 STOP_WORDS = {
@@ -18,12 +23,16 @@ STOP_WORDS = {
 def parse_skills(skills):
     return list(dict.fromkeys(
         skill.strip().lower()
-        for skill in skills.split(",") if skill.strip()
+        for skill in skills.split(",")
+        if skill.strip()
     ))
 
 
 def extract_keywords(text):
-    words = re.findall(r"[a-zA-Z][a-zA-Z0-9+#.]*", text.lower())
+    words = re.findall(
+        r"[a-zA-Z][a-zA-Z0-9+#.]*",
+        text.lower()
+    )
     return sorted({
         word for word in words
         if word not in STOP_WORDS and len(word) > 1
@@ -74,9 +83,13 @@ def calculate_education_score(education):
     education = normalize_education(education)
     if "phd" in education or "doctorate" in education:
         return 100
-    if any(x in education for x in ["mtech", "m.tech", "master", "mba"]):
+    if any(x in education for x in [
+        "mtech", "m.tech", "master", "mba"
+    ]):
         return 90
-    if any(x in education for x in ["btech", "b.tech", "bachelor", "bsc"]):
+    if any(x in education for x in [
+        "btech", "b.tech", "bachelor", "bsc"
+    ]):
         return 75
     if "diploma" in education:
         return 60
@@ -94,11 +107,25 @@ def calculate_overall_score(skill_score, experience, education):
 
 def validate_resume(data):
     if not isinstance(data, dict):
-        return None, "Invalid JSON data"
+        return None, "Request body must be a JSON object"
 
-    fields = ["name", "email", "skills", "experience", "education"]
-    if any(field not in data for field in fields):
-        return None, "Missing required fields"
+    required_fields = {
+        "name", "email", "skills", "experience", "education"
+    }
+
+    missing = required_fields - set(data)
+    if missing:
+        return None, (
+            "Missing required fields: "
+            + ", ".join(sorted(missing))
+        )
+
+    unexpected = set(data) - required_fields
+    if unexpected:
+        return None, (
+            "Unexpected fields: "
+            + ", ".join(sorted(unexpected))
+        )
 
     name = data["name"]
     email = data["email"]
@@ -106,33 +133,56 @@ def validate_resume(data):
     experience = data["experience"]
     education = data["education"]
 
-    if not isinstance(name, str) or len(name.strip()) < 2:
-        return None, "Invalid candidate name"
+    if not isinstance(name, str):
+        return None, "Name must be text"
 
-    if not isinstance(email, str) or not re.fullmatch(
-        r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
+    name = name.strip()
+    if not 2 <= len(name) <= 100:
+        return None, "Name must contain 2 to 100 characters"
+
+    if not isinstance(email, str):
+        return None, "Email must be text"
+
+    email = email.strip().lower()
+    if not re.fullmatch(
+        r"[^@\s]+@[^@\s]+\.[^@\s]+",
+        email
     ):
         return None, "Invalid email address"
 
-    if not isinstance(skills, str) or not parse_skills(skills):
+    if len(email) > 254:
+        return None, "Email address is too long"
+
+    if not isinstance(skills, str):
+        return None, "Skills must be text"
+
+    parsed_skills = parse_skills(skills)
+    if not parsed_skills:
         return None, "At least one skill is required"
+
+    if len(parsed_skills) > 100:
+        return None, "Too many skills provided"
 
     if (
         isinstance(experience, bool)
         or not isinstance(experience, (int, float))
         or not 0 <= experience <= 50
     ):
-        return None, "Invalid experience"
+        return None, "Experience must be between 0 and 50"
 
     if not isinstance(education, str):
-        return None, "Invalid education"
+        return None, "Education must be text"
+
+    education = normalize_education(education)
+    if not 2 <= len(education) <= 200:
+        return None, "Education must contain 2 to 200 characters"
 
     return {
-        "name": name.strip(),
-        "email": email.strip().lower(),
-        "skills": ", ".join(parse_skills(skills)),
+        "name": name,
+        "email": email,
+        "skills": ", ".join(parsed_skills),
         "experience": experience,
-        "education": normalize_education(education)
+        "education": education
     }, None
 
 
@@ -170,7 +220,10 @@ def get_statistics():
 
 def get_candidate(candidate_id):
     return next(
-        (c for c in get_all_resumes() if c["id"] == candidate_id),
+        (
+            candidate for candidate in get_all_resumes()
+            if candidate["id"] == candidate_id
+        ),
         None
     )
 
@@ -183,6 +236,13 @@ def compare_candidates(candidate1, candidate2, required_skills):
         candidate2["skills"], required_skills
     )
 
+    if score1 > score2:
+        higher_match = candidate1["name"]
+    elif score2 > score1:
+        higher_match = candidate2["name"]
+    else:
+        higher_match = "Tie"
+
     return {
         "candidate_1": {
             **candidate1,
@@ -192,9 +252,5 @@ def compare_candidates(candidate1, candidate2, required_skills):
             **candidate2,
             "match_score": score2
         },
-        "higher_match": (
-            candidate1["name"] if score1 > score2
-            else candidate2["name"] if score2 > score1
-            else "Tie"
-        )
+        "higher_match": higher_match
     }
