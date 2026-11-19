@@ -55,6 +55,7 @@ def api_request(method, endpoint, **kwargs):
             timeout=10,
             **kwargs
         )
+
         if not response.ok:
             try:
                 message = response.json().get(
@@ -62,15 +63,21 @@ def api_request(method, endpoint, **kwargs):
                 )
             except ValueError:
                 message = response.text or "Request failed"
-            st.error(f"API Error ({response.status_code}): {message}")
+
+            st.error(
+                f"API Error ({response.status_code}): {message}"
+            )
             return None
+
         return response.json()
+
     except requests.exceptions.ConnectionError:
         st.error("Cannot connect to Flask backend.")
     except requests.exceptions.Timeout:
         st.error("Request timed out.")
     except requests.RequestException as error:
         st.error(f"Unexpected API error: {error}")
+
     return None
 
 
@@ -82,11 +89,13 @@ def show_table(data, empty_message="No records found"):
 
 
 st.title("📄 Smart Resume Analyzer")
-st.caption("Candidate management, skill matching and recruitment analytics")
+st.caption(
+    "Candidate management, skill matching and recruitment analytics"
+)
 
 try:
-    status_response = requests.get(f"{API_URL}/", timeout=5)
-    status_response.raise_for_status()
+    response = requests.get(f"{API_URL}/health", timeout=5)
+    response.raise_for_status()
     st.success("Connected to Flask Backend")
 except requests.RequestException:
     st.warning("Flask backend is not running")
@@ -97,8 +106,10 @@ tabs = st.tabs([
     "Resume Analysis",
     "Ranking",
     "Analytics",
-    "Management"
+    "Management",
+    "Candidate Insights"
 ])
+
 
 with tabs[0]:
     st.header("Dashboard Statistics")
@@ -110,22 +121,35 @@ with tabs[0]:
 
     if "dashboard_stats" in st.session_state:
         stats = st.session_state["dashboard_stats"]
+
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Candidates", stats["total_candidates"])
-        c2.metric("Total Analyses", stats["total_analyses"])
+        c1.metric(
+            "Total Candidates",
+            stats["total_candidates"]
+        )
+        c2.metric(
+            "Total Analyses",
+            stats["total_analyses"]
+        )
         c3.metric(
             "Average Experience",
             f"{stats['average_experience']} years"
         )
-        c4.metric("Unique Skills", stats["unique_skills"])
+        c4.metric(
+            "Unique Skills",
+            stats["unique_skills"]
+        )
 
+    st.divider()
     st.subheader("Export Candidate Data")
+
     try:
         response = requests.get(
             f"{API_URL}/export-candidates",
             timeout=10
         )
         response.raise_for_status()
+
         st.download_button(
             "Download Candidates CSV",
             data=response.content,
@@ -153,7 +177,8 @@ with tabs[1]:
 
     if submitted:
         result = api_request(
-            "POST", "/submit-resume",
+            "POST",
+            "/submit-resume",
             json={
                 "name": name,
                 "email": email,
@@ -162,10 +187,14 @@ with tabs[1]:
                 "education": education
             }
         )
+
         if result is not None:
             st.success(result["message"])
-            st.info(f"Candidate ID: {result['resume_id']}")
+            st.info(
+                f"Candidate ID: {result['resume_id']}"
+            )
 
+    st.divider()
     st.subheader("Saved Candidates")
 
     if st.button("View Saved Resumes"):
@@ -173,25 +202,35 @@ with tabs[1]:
         if resumes is not None:
             show_table(resumes)
 
+    st.divider()
     st.subheader("Search Candidates")
-    search_name = st.text_input("Search by Candidate Name")
+
+    search_name = st.text_input(
+        "Search by Candidate Name"
+    )
 
     if st.button("Search"):
         results = api_request(
-            "GET", "/search-candidates",
+            "GET",
+            "/search-candidates",
             params={"name": search_name}
         )
+
         if results is not None:
             show_table(results)
 
+    st.divider()
     st.subheader("Filter Candidates by Skill")
+
     filter_skill = st.text_input("Enter Skill")
 
     if st.button("Filter"):
         results = api_request(
-            "GET", "/filter-skills",
+            "GET",
+            "/filter-skills",
             params={"skill": filter_skill}
         )
+
         if results is not None:
             show_table(results)
 
@@ -199,41 +238,59 @@ with tabs[1]:
 with tabs[2]:
     st.header("Job Description Analysis")
 
-    job_description = st.text_area("Enter Job Description")
+    job_description = st.text_area(
+        "Enter Job Description"
+    )
 
     if st.button("Analyze Job Description"):
         if job_description.strip():
             result = api_request(
-                "POST", "/extract-keywords",
+                "POST",
+                "/extract-keywords",
                 json={"description": job_description}
             )
+
             if result is not None:
-                st.write("Keywords:", result["keywords"])
+                st.write(
+                    "Extracted Keywords:",
+                    result["keywords"]
+                )
         else:
             st.warning("Please enter a job description")
 
     st.divider()
     st.subheader("Resume Skill Match")
 
-    candidate_skills = st.text_input("Candidate Skills")
-    required_skills = st.text_input("Required Job Skills")
+    candidate_skills = st.text_input(
+        "Candidate Skills"
+    )
+    required_skills = st.text_input(
+        "Required Job Skills"
+    )
 
     if st.button("Calculate Match"):
         result = api_request(
-            "POST", "/compare-skills",
+            "POST",
+            "/compare-skills",
             json={
                 "candidate_skills": candidate_skills,
                 "required_skills": required_skills
             }
         )
+
         if result is not None:
             st.session_state["match_result"] = result
 
     if "match_result" in st.session_state:
         result = st.session_state["match_result"]
-        st.metric("Skill Match", f"{result['score']}%")
+
+        st.metric(
+            "Skill Match",
+            f"{result['score']}%"
+        )
 
         st.subheader("Matched Skills")
+
         if result["matched"]:
             for skill in result["matched"]:
                 st.success(skill)
@@ -241,6 +298,7 @@ with tabs[2]:
             st.info("No matched skills")
 
         st.subheader("Missing Skills")
+
         if result["missing"]:
             for skill in result["missing"]:
                 st.warning(skill)
@@ -248,6 +306,7 @@ with tabs[2]:
             st.success("No missing skills")
 
         st.subheader("Improvement Suggestions")
+
         for suggestion in result.get("suggestions", []):
             st.info(suggestion)
 
@@ -255,7 +314,9 @@ with tabs[2]:
     st.subheader("Overall Resume Score")
 
     with st.form("overall_score_form"):
-        score_skills = st.slider("Skill Score", 0, 100, 50)
+        score_skills = st.slider(
+            "Skill Score", 0, 100, 50
+        )
         score_experience = st.number_input(
             "Years of Experience",
             min_value=0,
@@ -266,36 +327,50 @@ with tabs[2]:
             "Education",
             ["Diploma", "BTech", "MTech", "PhD"]
         )
-        calculate = st.form_submit_button("Calculate Overall Score")
+        calculate = st.form_submit_button(
+            "Calculate Overall Score"
+        )
 
     if calculate:
         result = api_request(
-            "POST", "/overall-score",
+            "POST",
+            "/overall-score",
             json={
                 "skill_score": score_skills,
                 "experience": score_experience,
                 "education": score_education
             }
         )
+
         if result is not None:
-            st.session_state["overall_score"] = result["overall_score"]
+            st.session_state["overall_score"] = (
+                result["overall_score"]
+            )
 
     if "overall_score" in st.session_state:
         score = st.session_state["overall_score"]
+
         st.progress(score / 100)
-        st.metric("Overall Score", f"{score}%")
+        st.metric(
+            "Overall Score",
+            f"{score}%"
+        )
 
 
 with tabs[3]:
     st.header("Candidate Ranking")
 
-    ranking_skills = st.text_input("Required Skills for Ranking")
+    ranking_skills = st.text_input(
+        "Required Skills for Ranking"
+    )
 
     if st.button("Rank Candidates"):
         results = api_request(
-            "POST", "/rank-candidates",
+            "POST",
+            "/rank-candidates",
             json={"required_skills": ranking_skills}
         )
+
         if results is not None:
             show_table(results)
 
@@ -308,9 +383,11 @@ with tabs[3]:
 
     if st.button("Show Top 5 Candidates"):
         results = api_request(
-            "POST", "/top-candidates",
+            "POST",
+            "/top-candidates",
             json={"required_skills": top_required}
         )
+
         if results is not None:
             show_table(results)
 
@@ -319,43 +396,71 @@ with tabs[3]:
 
     with st.form("compare_candidates_form"):
         candidate_id_1 = st.number_input(
-            "First Candidate ID", min_value=1, step=1
+            "First Candidate ID",
+            min_value=1,
+            step=1
         )
         candidate_id_2 = st.number_input(
-            "Second Candidate ID", min_value=1, step=1
+            "Second Candidate ID",
+            min_value=1,
+            step=1
         )
         compare_required = st.text_input(
             "Required Skills for Comparison"
         )
-        compare_submit = st.form_submit_button("Compare Candidates")
+        compare_submit = st.form_submit_button(
+            "Compare Candidates"
+        )
 
     if compare_submit:
         result = api_request(
-            "POST", "/compare-candidates",
+            "POST",
+            "/compare-candidates",
             json={
                 "candidate_id_1": candidate_id_1,
                 "candidate_id_2": candidate_id_2,
                 "required_skills": compare_required
             }
         )
+
         if result is not None:
             col1, col2 = st.columns(2)
 
             with col1:
                 c = result["candidate_1"]
+
                 st.subheader(c["name"])
                 st.write("Skills:", c["skills"])
-                st.write("Experience:", c["experience"])
-                st.write("Education:", c["education"])
-                st.metric("Match Score", f"{c['match_score']}%")
+                st.write(
+                    "Experience:",
+                    c["experience"]
+                )
+                st.write(
+                    "Education:",
+                    c["education"]
+                )
+                st.metric(
+                    "Match Score",
+                    f"{c['match_score']}%"
+                )
 
             with col2:
                 c = result["candidate_2"]
+
                 st.subheader(c["name"])
                 st.write("Skills:", c["skills"])
-                st.write("Experience:", c["experience"])
-                st.write("Education:", c["education"])
-                st.metric("Match Score", f"{c['match_score']}%")
+                st.write(
+                    "Experience:",
+                    c["experience"]
+                )
+                st.write(
+                    "Education:",
+                    c["education"]
+                )
+                st.metric(
+                    "Match Score",
+                    f"{c['match_score']}%"
+                )
 
             st.success(
                 f"Higher Skill Match: {result['higher_match']}"
@@ -366,16 +471,30 @@ with tabs[4]:
     st.header("Skill Frequency Analysis")
 
     if st.button("Show Skill Frequency"):
-        frequency = api_request("GET", "/skill-frequency")
+        frequency = api_request(
+            "GET",
+            "/skill-frequency"
+        )
+
         if frequency is not None:
             if frequency:
                 df = pd.DataFrame(
                     list(frequency.items()),
                     columns=["Skill", "Count"]
-                ).sort_values("Count", ascending=False)
+                )
 
-                st.dataframe(df, use_container_width=True)
-                st.bar_chart(df.set_index("Skill")["Count"])
+                df = df.sort_values(
+                    "Count",
+                    ascending=False
+                )
+
+                st.dataframe(
+                    df,
+                    use_container_width=True
+                )
+                st.bar_chart(
+                    df.set_index("Skill")["Count"]
+                )
             else:
                 st.info("No skill data available")
 
@@ -384,21 +503,27 @@ with tabs[4]:
 
     with st.form("analysis_form"):
         history_id = st.number_input(
-            "Candidate ID for Analysis", min_value=1, step=1
+            "Candidate ID for Analysis",
+            min_value=1,
+            step=1
         )
         history_skills = st.text_input(
             "Required Skills for Analysis"
         )
-        save_history = st.form_submit_button("Save Analysis")
+        save_history = st.form_submit_button(
+            "Save Analysis"
+        )
 
     if save_history:
         result = api_request(
-            "POST", "/save-analysis",
+            "POST",
+            "/save-analysis",
             json={
                 "candidate_id": history_id,
                 "required_skills": history_skills
             }
         )
+
         if result is not None:
             st.success(result["message"])
             st.metric(
@@ -407,7 +532,11 @@ with tabs[4]:
             )
 
     if st.button("View Analysis History"):
-        history = api_request("GET", "/analysis-history")
+        history = api_request(
+            "GET",
+            "/analysis-history"
+        )
+
         if history is not None:
             show_table(history)
 
@@ -424,20 +553,31 @@ with tabs[5]:
             step=1,
             key="update_id"
         )
-        update_name = st.text_input("Updated Name")
-        update_email = st.text_input("Updated Email")
-        update_skills = st.text_input("Updated Skills")
+        update_name = st.text_input(
+            "Updated Name"
+        )
+        update_email = st.text_input(
+            "Updated Email"
+        )
+        update_skills = st.text_input(
+            "Updated Skills"
+        )
         update_experience = st.number_input(
             "Updated Experience",
             min_value=0,
             max_value=50
         )
-        update_education = st.text_input("Updated Education")
-        update_submitted = st.form_submit_button("Update Candidate")
+        update_education = st.text_input(
+            "Updated Education"
+        )
+        update_submitted = st.form_submit_button(
+            "Update Candidate"
+        )
 
     if update_submitted:
         result = api_request(
-            "PUT", f"/resumes/{update_id}",
+            "PUT",
+            f"/resumes/{update_id}",
             json={
                 "name": update_name,
                 "email": update_email,
@@ -446,6 +586,7 @@ with tabs[5]:
                 "education": update_education
             }
         )
+
         if result is not None:
             st.success(result["message"])
 
@@ -460,7 +601,85 @@ with tabs[5]:
 
     if st.button("Delete Candidate"):
         result = api_request(
-            "DELETE", f"/resumes/{delete_id}"
+            "DELETE",
+            f"/resumes/{delete_id}"
         )
+
         if result is not None:
             st.success(result["message"])
+
+
+with tabs[6]:
+    st.header("Candidate Insights")
+
+    st.write(
+        "View a candidate's skills, experience, "
+        "and education scoring details."
+    )
+
+    insight_candidate_id = st.number_input(
+        "Candidate ID for Insights",
+        min_value=1,
+        step=1,
+        key="insight_candidate_id"
+    )
+
+    if st.button("View Candidate Insights"):
+        result = api_request(
+            "GET",
+            f"/candidate-insights/{insight_candidate_id}"
+        )
+
+        if result is not None:
+            st.session_state["candidate_insights"] = result
+
+    if "candidate_insights" in st.session_state:
+        result = st.session_state["candidate_insights"]
+
+        st.subheader(result["name"])
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            "Total Skills",
+            result["total_skills"]
+        )
+        col2.metric(
+            "Experience Score",
+            f"{result['experience_score']}%"
+        )
+        col3.metric(
+            "Education Score",
+            f"{result['education_score']}%"
+        )
+
+        st.divider()
+        st.subheader("Candidate Profile")
+
+        st.write(
+            "Candidate ID:",
+            result["candidate_id"]
+        )
+        st.write(
+            "Experience:",
+            result["experience_years"],
+            "years"
+        )
+        st.write(
+            "Education:",
+            result["education"]
+        )
+
+        st.subheader("Candidate Skills")
+
+        if result["skills"]:
+            skill_df = pd.DataFrame({
+                "Skill": result["skills"]
+            })
+            st.dataframe(
+                skill_df,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No skills available")
